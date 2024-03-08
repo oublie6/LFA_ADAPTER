@@ -2,6 +2,23 @@
 #include <core.p4>
 #include <v1model.p4>
 
+const bit<8>  HULAPP_PROTOCOL = 254; 
+
+register<bit<32>>(2048) min_path_util; //Min path util on a port
+register<bit<16>>(2048) best_nhop;     //Best next hop
+register<bit<32>>(2048) link_util;     //Link util on a port.
+
+// Metric util
+register<bit<32>>(5) local_util;     // Local util per port.
+register<bit<48>>(5) last_packet_time;
+
+header hulapp_t {
+    bit<16>  count;      //Number of metrics a probe carries
+    bit<16>  dst_tor;    //The sending TOR
+    bit<32>  ptag;       //The probe tag 
+    bit<32>  path_util;  //The path util
+}
+
 const bit<16> TYPE_IPV4 = 0x800;
 
 /*************************************************************************
@@ -33,13 +50,26 @@ header ipv4_t {
     ip4Addr_t dstAddr;
 }
 
+struct ingress_metadata_t {
+    bit<16>  count;
+}
+
+struct parser_metadata_t {
+    bit<16>  remaining;
+    bit<32>  dtag;      //tag of data packet 
+    bit<32>  ptag;      //tag of probe packet 
+}
+
 struct metadata {
     /* empty */
+    ingress_metadata_t   ingress_metadata;
+    parser_metadata_t   parser_metadata;
 }
 
 struct headers {
-    ethernet_t   ethernet;
-    ipv4_t       ipv4;
+    ethernet_t                                      ethernet;
+    ipv4_t                                                  ipv4;
+    hulapp_t                                            hulapp;
 }
 
 /*************************************************************************
@@ -60,14 +90,26 @@ parser MyParser(packet_in packet,
             default: accept;
 
         }
-
     }
 
     state ipv4 {
-
         packet.extract(hdr.ipv4);
+        // transition select (hdr.ipv4.protocol) {
+        //     HULAPP_PROTOCOL      : parse_hulapp;
+        //     _                    : accept;
+        // }
         transition accept;
     }
+
+    // state parse_hulapp {
+    //     packet.extract(hdr.hulapp);
+    //     meta.parser_metadata.remaining = hdr.hulapp.count;
+    //     meta.parser_metadata.ptag = hdr.hulapp.ptag;
+    //     transition select(meta.parser_metadata.remaining) {
+    //         0 : accept;
+    //         _ : parse_metrics;
+    //     }
+    // }
 
 }
 
@@ -91,6 +133,53 @@ control MyIngress(inout headers hdr,
 
     action drop() {
         mark_to_drop(standard_metadata);
+    }
+
+    action add_hulapp_header() {
+
+        hdr.hulapp.setValid();
+        hdr.hulapp.count = 0;
+        //An extra hop in the probe takes up 16bits, or 1 word.
+        hdr.ipv4.ihl = hdr.ipv4.ihl + 1;
+    }
+
+/*----------------------------------------------------------------------*/
+/*Process Hula++ probes*/
+
+    action do_hulapp() {
+       //TODO: Process HulaPP probe
+    }
+
+
+    /*If Hula++ probe, stamp swid into Hula++ header*/
+    table tab_hulapp {
+        key = { hdr.ipv4.protocol : exact; }
+        actions        = { do_hulapp; NoAction; }
+        default_action =  NoAction();
+    }
+
+/*----------------------------------------------------------------------*/
+/*If Hula++ probe, mcast it to the right set of next hops*/
+
+    // Write to the standard_metadata's mcast field!
+    action set_hulapp_mcast(bit<16> mcast_id) {
+      standard_metadata.mcast_grp = mcast_id;
+    }
+
+    table hulapp_mcast {
+
+        key = {
+          standard_metadata.ingress_port : exact; 
+        }
+
+        actions = {
+          set_hulapp_mcast; 
+          drop; 
+          NoAction; 
+        }
+
+        size = 1024;
+        default_action = NoAction();
     }
 
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
@@ -128,7 +217,45 @@ control MyIngress(inout headers hdr,
         if (hdr.ipv4.isValid()){
             ipv4_lpm.apply();
 
+            if (hdr.ipv4.protocol == HULAPP_PROTOCOL) {
+              tab_hulapp.apply();
+
+            
+              //Update the min. path util metric:
+              bit<16> the_dst_tor = hdr.hulapp.dst_tor;
+              bit<32> the_path_util = hdr.hulapp.path_util;
+
+              /*TODO: Update the Hula++ header with the current path util at this link*/
+              //Ang: This may require the use of Counter types???
+
+              //Update the min path util if we've found a better path
+              bit<32> the_min_path_util;
+              min_path_util.read(the_min_path_util, (bit<32>)the_dst_tor);
+
+              if (the_path_util < the_min_path_util) {
+                min_path_util.write((bit<32>)the_dst_tor, the_path_util);
+              }
+
+              //Multicast the Hula++ probe 
+              hulapp_mcast.apply();
+            }
         }
+        //  // Update the path utilization if necessary
+        // if (standard_metadata.egress_spec != 1) {
+        //     bit<32> tmp_util = 0;
+        //     bit<48> tmp_time = 0;
+        //     bit<32> time_diff = 0;
+        //     local_util.read(tmp_util, (bit<32>) standard_metadata.egress_spec - 2);
+        //     last_packet_time.read(tmp_time, (bit<32>) standard_metadata.egress_spec - 2);
+        //     time_diff = (bit<32>)(standard_metadata.ingress_global_timestamp - tmp_time);
+        //     bit<32> temp = tmp_util*time_diff;
+        //     tmp_util = time_diff > UTIL_RESET_TIME_THRESHOLD ?
+        //                 0 : standard_metadata.packet_length + tmp_util - (temp >> TAU_EXPONENT);
+        //     last_packet_time.write((bit<32>) standard_metadata.egress_spec - 2,
+        //                             standard_metadata.ingress_global_timestamp);
+        //     local_util.write((bit<32>) standard_metadata.egress_spec - 2, tmp_util);
+
+        // }
     }
 }
 
@@ -178,19 +305,7 @@ control MyDeparser(packet_out packet, in headers hdr) {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
 
+
     }
 }
 
-/*************************************************************************
-***********************  S W I T C H  *******************************
-*************************************************************************/
-
-//switch architecture
-V1Switch(
-MyParser(),
-MyVerifyChecksum(),
-MyIngress(),
-MyEgress(),
-MyComputeChecksum(),
-MyDeparser()
-) main;
