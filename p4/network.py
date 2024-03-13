@@ -4,45 +4,45 @@ from p4.topologyzoo.util import *
 templateDir='p4/template/'
 graphDir='p4/topologyzoo/topo/'
 
-def Main():
+# def Main():
 
-        net = NetworkAPI()
+#         net = NetworkAPI()
 
-        # Network general options
-        net.setLogLevel('info')
-        net.enableCli()
+#         # Network general options
+#         net.setLogLevel('info')
+#         net.enableCli()
 
-        # Network definition
-        net.addP4Switch('s1', cli_input=templateDir+'s1-commands.txt')
-        net.addP4Switch('s2', cli_input=templateDir+'s2-commands.txt')
-        net.addP4Switch('s3', cli_input=templateDir+'s3-commands.txt')
+#         # Network definition
+#         net.addP4Switch('s1', cli_input=templateDir+'s1-commands.txt')
+#         net.addP4Switch('s2', cli_input=templateDir+'s2-commands.txt')
+#         net.addP4Switch('s3', cli_input=templateDir+'s3-commands.txt')
 
-        import os
-        print("当前工作目录：", os.getcwd())
+#         import os
+#         print("当前工作目录：", os.getcwd())
 
-        net.setP4SourceAll(templateDir+'switch.p4')
+#         net.setP4SourceAll(templateDir+'switch.p4')
 
-        net.addHost('h1')
-        net.addHost('h2')
-        net.addHost('h3')
-        net.addHost('h4')
+#         net.addHost('h1')
+#         net.addHost('h2')
+#         net.addHost('h3')
+#         net.addHost('h4')
 
-        net.addLink('h1','s1')
-        net.addLink('h2','s2')
-        net.addLink('s1','s2')
-        net.addLink('s1','s3')
-        net.addLink('h3','s3')
-        net.addLink('h4','s3')
+#         net.addLink('h1','s1')
+#         net.addLink('h2','s2')
+#         net.addLink('s1','s2')
+#         net.addLink('s1','s3')
+#         net.addLink('h3','s3')
+#         net.addLink('h4','s3')
 
-        # Assignment strategy
-        net.l3()
+#         # Assignment strategy
+#         net.l3()
 
-        # Nodes general options
-        net.enablePcapDumpAll()
-        net.enableLogAll()
+#         # Nodes general options
+#         net.enablePcapDumpAll()
+#         net.enableLogAll()
 
-        # Start network
-        net.startNetwork()
+#         # Start network
+#         net.startNetwork()
 
 def BuildNet(graph):
 
@@ -54,20 +54,20 @@ def BuildNet(graph):
         net.setLogLevel('info')
         net.enableCli()
         
-        # 添加交换机节点
+        # 添加交换机节点和主机
         print("添加交换机节点和主机:")
         for node, attrs in G.nodes(data=True):
                 Sname='s'+node
                 Hname='h'+node
                 print(Sname,Hname)
                 print("Node:", Sname)
-                net.addP4Switch(Sname)
+                net.addP4Switch(Sname,cli_input=templateDir+'s-command.txt')
                 net.addHost(Hname)
                 net.addLink(Hname,Sname)
                 # for key, value in attrs.items():
                 # print(f"    {key}: {value}")
 
-        net.setP4SourceAll(templateDir+'switch.p4')
+        net.setP4SourceAll(templateDir+'switch.p4',)
 
         # 添加链路
         mygraph=dict()
@@ -78,8 +78,11 @@ def BuildNet(graph):
                 toname='s'+v
                 if fromname not in mygraph:
                         mygraph[fromname]=set()
+                if toname not in mygraph:
+                        mygraph[toname]=set()
                 if toname not in mygraph[fromname]:
                         mygraph[fromname].add(toname)
+                        mygraph[toname].add(fromname)
                         print(fromname,toname)
                         net.addLink(fromname,toname)
                 else:
@@ -100,7 +103,7 @@ def BuildNet(graph):
                                 print(node1,node2,len(net._linkEntry(node1, node2)[0]))
 
         # Assignment strategy
-        net.mixed()
+        net.l3()
 
         # Nodes general options
         net.enablePcapDumpAll()

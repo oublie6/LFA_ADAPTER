@@ -1,3 +1,3 @@
 from p4.network import *
 
-BuildNet(graphDir+'AttMpls.graphml')
+BuildNet(graphDir+'Ibm.graphml')

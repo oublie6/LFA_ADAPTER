@@ -4,18 +4,38 @@
       "name" : "scalars_0",
       "id" : 0,
       "fields" : [
-        ["tmp", 32, false],
-        ["tmp_0", 32, false],
+        ["tmp", 16, false],
+        ["tmp_1", 32, false],
+        ["tmp_2", 32, false],
         ["the_min_path_util_0", 32, false],
         ["userMetadata._ingress_metadata_count0", 16, false],
         ["userMetadata._parser_metadata_remaining1", 16, false],
         ["userMetadata._parser_metadata_dtag2", 32, false],
-        ["userMetadata._parser_metadata_ptag3", 32, false]
+        ["userMetadata._parser_metadata_ptag3", 32, false],
+        ["userMetadata._traceroute_type4", 16, false]
+      ]
+    },
+    {
+      "name" : "ipv4_t",
+      "id" : 1,
+      "fields" : [
+        ["version", 4, false],
+        ["ihl", 4, false],
+        ["diffserv", 8, false],
+        ["totalLen", 16, false],
+        ["identification", 16, false],
+        ["flags", 3, false],
+        ["fragOffset", 13, false],
+        ["ttl", 8, false],
+        ["protocol", 8, false],
+        ["hdrChecksum", 16, false],
+        ["srcAddr", 32, false],
+        ["dstAddr", 32, false]
       ]
     },
     {
       "name" : "standard_metadata",
-      "id" : 1,
+      "id" : 2,
       "fields" : [
         ["ingress_port", 9, false],
         ["egress_spec", 9, false],
@@ -38,29 +58,11 @@
     },
     {
       "name" : "ethernet_t",
-      "id" : 2,
+      "id" : 3,
       "fields" : [
         ["dstAddr", 48, false],
         ["srcAddr", 48, false],
         ["etherType", 16, false]
-      ]
-    },
-    {
-      "name" : "ipv4_t",
-      "id" : 3,
-      "fields" : [
-        ["version", 4, false],
-        ["ihl", 4, false],
-        ["diffserv", 8, false],
-        ["totalLen", 16, false],
-        ["identification", 16, false],
-        ["flags", 3, false],
-        ["fragOffset", 13, false],
-        ["ttl", 8, false],
-        ["protocol", 8, false],
-        ["hdrChecksum", 16, false],
-        ["srcAddr", 32, false],
-        ["dstAddr", 32, false]
       ]
     },
     {
@@ -76,37 +78,51 @@
   ],
   "headers" : [
     {
-      "name" : "scalars",
+      "name" : "tmp_0",
       "id" : 0,
+      "header_type" : "ipv4_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "scalars",
+      "id" : 1,
       "header_type" : "scalars_0",
       "metadata" : true,
       "pi_omit" : true
     },
     {
       "name" : "standard_metadata",
-      "id" : 1,
+      "id" : 2,
       "header_type" : "standard_metadata",
       "metadata" : true,
       "pi_omit" : true
     },
     {
       "name" : "ethernet",
-      "id" : 2,
+      "id" : 3,
       "header_type" : "ethernet_t",
       "metadata" : false,
       "pi_omit" : true
     },
     {
       "name" : "ipv4",
-      "id" : 3,
+      "id" : 4,
       "header_type" : "ipv4_t",
       "metadata" : false,
       "pi_omit" : true
     },
     {
       "name" : "hulapp",
-      "id" : 4,
+      "id" : 5,
       "header_type" : "hulapp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "_traceroute_ipv45",
+      "id" : 6,
+      "header_type" : "ipv4_t",
       "metadata" : false,
       "pi_omit" : true
     }
@@ -183,6 +199,67 @@
           ],
           "transitions" : [
             {
+              "type" : "hexstr",
+              "value" : "0xfe",
+              "mask" : null,
+              "next_state" : "parse_hulapp"
+            },
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "protocol"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_hulapp",
+          "id" : 2,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "hulapp"
+                }
+              ],
+              "op" : "extract"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "field",
+                  "value" : ["scalars", "userMetadata._parser_metadata_remaining1"]
+                },
+                {
+                  "type" : "field",
+                  "value" : ["hulapp", "count"]
+                }
+              ],
+              "op" : "set"
+            },
+            {
+              "parameters" : [
+                {
+                  "type" : "field",
+                  "value" : ["scalars", "userMetadata._parser_metadata_ptag3"]
+                },
+                {
+                  "type" : "field",
+                  "value" : ["hulapp", "ptag"]
+                }
+              ],
+              "op" : "set"
+            }
+          ],
+          "transitions" : [
+            {
               "type" : "default",
               "value" : null,
               "mask" : null,
@@ -201,7 +278,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-        "line" : 301,
+        "line" : 329,
         "column" : 8,
         "source_fragment" : "MyDeparser"
       },
@@ -279,7 +356,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-        "line" : 278,
+        "line" : 306,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },
@@ -332,7 +409,72 @@
       ]
     }
   ],
-  "learn_lists" : [],
+  "learn_lists" : [
+    {
+      "id" : 1,
+      "name" : "traceroute_t",
+      "source_info" : {
+        "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+        "line" : 191,
+        "column" : 14,
+        "source_fragment" : "meta"
+      },
+      "elements" : [
+        {
+          "type" : "field",
+          "value" : ["scalars", "tmp"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "version"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "ihl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "diffserv"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "totalLen"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "identification"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "flags"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "fragOffset"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "ttl"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "protocol"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "hdrChecksum"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tmp_0", "dstAddr"]
+        }
+      ]
+    }
+  ],
   "actions" : [
     {
       "name" : "NoAction",
@@ -353,26 +495,10 @@
       "primitives" : []
     },
     {
-      "name" : "MyIngress.drop",
+      "name" : "NoAction",
       "id" : 3,
       "runtime_data" : [],
-      "primitives" : [
-        {
-          "op" : "mark_to_drop",
-          "parameters" : [
-            {
-              "type" : "header",
-              "value" : "standard_metadata"
-            }
-          ],
-          "source_info" : {
-            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 135,
-            "column" : 8,
-            "source_fragment" : "mark_to_drop(standard_metadata)"
-          }
-        }
-      ]
+      "primitives" : []
     },
     {
       "name" : "MyIngress.drop",
@@ -389,7 +515,29 @@
           ],
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 135,
+            "line" : 138,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 5,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 138,
             "column" : 8,
             "source_fragment" : "mark_to_drop(standard_metadata)"
           }
@@ -398,13 +546,13 @@
     },
     {
       "name" : "MyIngress.do_hulapp",
-      "id" : 5,
+      "id" : 6,
       "runtime_data" : [],
       "primitives" : []
     },
     {
       "name" : "MyIngress.set_hulapp_mcast",
-      "id" : 6,
+      "id" : 7,
       "runtime_data" : [
         {
           "name" : "mcast_id",
@@ -426,7 +574,7 @@
           ],
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 166,
+            "line" : 169,
             "column" : 6,
             "source_fragment" : "standard_metadata.mcast_grp = mcast_id"
           }
@@ -434,8 +582,125 @@
       ]
     },
     {
+      "name" : "MyIngress.send_digest",
+      "id" : 8,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "userMetadata._traceroute_type4"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 189,
+            "column" : 4,
+            "source_fragment" : "meta.traceroute.type=0"
+          }
+        },
+        {
+          "op" : "assign_header",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "_traceroute_ipv45"
+            },
+            {
+              "type" : "header",
+              "value" : "ipv4"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 190,
+            "column" : 4,
+            "source_fragment" : "meta.traceroute.ipv4=hdr.ipv4"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "tmp"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 189,
+            "column" : 25,
+            "source_fragment" : "0"
+          }
+        },
+        {
+          "op" : "assign_header",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "tmp_0"
+            },
+            {
+              "type" : "header",
+              "value" : "ipv4"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 190,
+            "column" : 25,
+            "source_fragment" : "hdr.ipv4"
+          }
+        },
+        {
+          "op" : "generate_digest",
+          "parameters" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x00000001"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x1"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 191,
+            "column" : 4,
+            "source_fragment" : "digest(1, meta.traceroute)"
+          }
+        },
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 192,
+            "column" : 4,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
       "name" : "MyIngress.ipv4_forward",
-      "id" : 7,
+      "id" : 9,
       "runtime_data" : [
         {
           "name" : "dstAddr",
@@ -447,63 +712,6 @@
         }
       ],
       "primitives" : [
-        {
-          "op" : "assign",
-          "parameters" : [
-            {
-              "type" : "field",
-              "value" : ["ethernet", "srcAddr"]
-            },
-            {
-              "type" : "field",
-              "value" : ["ethernet", "dstAddr"]
-            }
-          ],
-          "source_info" : {
-            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 188,
-            "column" : 8,
-            "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
-          }
-        },
-        {
-          "op" : "assign",
-          "parameters" : [
-            {
-              "type" : "field",
-              "value" : ["ethernet", "dstAddr"]
-            },
-            {
-              "type" : "runtime_data",
-              "value" : 0
-            }
-          ],
-          "source_info" : {
-            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 191,
-            "column" : 8,
-            "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
-          }
-        },
-        {
-          "op" : "assign",
-          "parameters" : [
-            {
-              "type" : "field",
-              "value" : ["standard_metadata", "egress_spec"]
-            },
-            {
-              "type" : "runtime_data",
-              "value" : 1
-            }
-          ],
-          "source_info" : {
-            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 194,
-            "column" : 8,
-            "source_fragment" : "standard_metadata.egress_spec = port"
-          }
-        },
         {
           "op" : "assign",
           "parameters" : [
@@ -541,16 +749,73 @@
           ],
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 197,
+            "line" : 213,
             "column" : 8,
             "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl -1"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "srcAddr"]
+            },
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 216,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 219,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 222,
+            "column" : 8,
+            "source_fragment" : "standard_metadata.egress_spec = port"
           }
         }
       ]
     },
     {
-      "name" : "ip_forwarding236",
-      "id" : 8,
+      "name" : "ip_forwarding263",
+      "id" : 10,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -558,7 +823,7 @@
           "parameters" : [
             {
               "type" : "field",
-              "value" : ["scalars", "tmp"]
+              "value" : ["scalars", "tmp_1"]
             },
             {
               "type" : "expression",
@@ -580,7 +845,7 @@
           ],
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 236,
+            "line" : 263,
             "column" : 36,
             "source_fragment" : "(bit<32>)the_dst_tor"
           }
@@ -594,7 +859,7 @@
             },
             {
               "type" : "field",
-              "value" : ["scalars", "tmp"]
+              "value" : ["scalars", "tmp_1"]
             },
             {
               "type" : "field",
@@ -603,7 +868,7 @@
           ],
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 236,
+            "line" : 263,
             "column" : 16,
             "source_fragment" : "min_path_util.write((bit<32>)the_dst_tor, the_path_util)"
           }
@@ -611,8 +876,8 @@
       ]
     },
     {
-      "name" : "ip_forwarding233",
-      "id" : 9,
+      "name" : "ip_forwarding260",
+      "id" : 11,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -620,7 +885,7 @@
           "parameters" : [
             {
               "type" : "field",
-              "value" : ["scalars", "tmp_0"]
+              "value" : ["scalars", "tmp_2"]
             },
             {
               "type" : "expression",
@@ -642,7 +907,7 @@
           ],
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 233,
+            "line" : 260,
             "column" : 52,
             "source_fragment" : "(bit<32>)the_dst_tor"
           }
@@ -660,12 +925,12 @@
             },
             {
               "type" : "field",
-              "value" : ["scalars", "tmp_0"]
+              "value" : ["scalars", "tmp_2"]
             }
           ],
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 233,
+            "line" : 260,
             "column" : 14,
             "source_fragment" : "min_path_util.read(the_min_path_util, (bit<32>)the_dst_tor)"
           }
@@ -679,7 +944,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-        "line" : 130,
+        "line" : 133,
         "column" : 8,
         "source_fragment" : "MyIngress"
       },
@@ -690,7 +955,7 @@
           "id" : 0,
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 201,
+            "line" : 226,
             "column" : 10,
             "source_fragment" : "ipv4_lpm"
           },
@@ -708,13 +973,50 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [7, 4, 2],
+          "action_ids" : [9, 5, 3],
           "actions" : ["MyIngress.ipv4_forward", "MyIngress.drop", "NoAction"],
-          "base_default_next" : "node_4",
+          "base_default_next" : "MyIngress.exced_time_table",
           "next_tables" : {
-            "MyIngress.ipv4_forward" : "node_4",
-            "MyIngress.drop" : "node_4",
-            "NoAction" : "node_4"
+            "MyIngress.ipv4_forward" : "MyIngress.exced_time_table",
+            "MyIngress.drop" : "MyIngress.exced_time_table",
+            "NoAction" : "MyIngress.exced_time_table"
+          },
+          "default_entry" : {
+            "action_id" : 3,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "MyIngress.exced_time_table",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
+            "line" : 195,
+            "column" : 10,
+            "source_fragment" : "exced_time_table"
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "hdr.ipv4.ttl",
+              "target" : ["ipv4", "ttl"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 4,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [8, 2],
+          "actions" : ["MyIngress.send_digest", "NoAction"],
+          "base_default_next" : "node_5",
+          "next_tables" : {
+            "MyIngress.send_digest" : "node_5",
+            "NoAction" : "node_5"
           },
           "default_entry" : {
             "action_id" : 2,
@@ -725,10 +1027,10 @@
         },
         {
           "name" : "MyIngress.tab_hulapp",
-          "id" : 1,
+          "id" : 2,
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 155,
+            "line" : 158,
             "column" : 10,
             "source_fragment" : "tab_hulapp"
           },
@@ -746,12 +1048,12 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [5, 0],
+          "action_ids" : [6, 0],
           "actions" : ["MyIngress.do_hulapp", "NoAction"],
-          "base_default_next" : "tbl_ip_forwarding233",
+          "base_default_next" : "tbl_ip_forwarding260",
           "next_tables" : {
-            "MyIngress.do_hulapp" : "tbl_ip_forwarding233",
-            "NoAction" : "tbl_ip_forwarding233"
+            "MyIngress.do_hulapp" : "tbl_ip_forwarding260",
+            "NoAction" : "tbl_ip_forwarding260"
           },
           "default_entry" : {
             "action_id" : 0,
@@ -761,11 +1063,11 @@
           }
         },
         {
-          "name" : "tbl_ip_forwarding233",
-          "id" : 2,
+          "name" : "tbl_ip_forwarding260",
+          "id" : 3,
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 233,
+            "line" : 260,
             "column" : 14,
             "source_fragment" : "min_path_util.read(the_min_path_util, (bit<32>)the_dst_tor)"
           },
@@ -776,25 +1078,25 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [9],
-          "actions" : ["ip_forwarding233"],
-          "base_default_next" : "node_7",
+          "action_ids" : [11],
+          "actions" : ["ip_forwarding260"],
+          "base_default_next" : "node_8",
           "next_tables" : {
-            "ip_forwarding233" : "node_7"
+            "ip_forwarding260" : "node_8"
           },
           "default_entry" : {
-            "action_id" : 9,
+            "action_id" : 11,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
           }
         },
         {
-          "name" : "tbl_ip_forwarding236",
-          "id" : 3,
+          "name" : "tbl_ip_forwarding263",
+          "id" : 4,
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 236,
+            "line" : 263,
             "column" : 16,
             "source_fragment" : "min_path_util.write((bit<32>)the_dst_tor, the_path_util)"
           },
@@ -805,14 +1107,14 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [8],
-          "actions" : ["ip_forwarding236"],
+          "action_ids" : [10],
+          "actions" : ["ip_forwarding263"],
           "base_default_next" : "MyIngress.hulapp_mcast",
           "next_tables" : {
-            "ip_forwarding236" : "MyIngress.hulapp_mcast"
+            "ip_forwarding263" : "MyIngress.hulapp_mcast"
           },
           "default_entry" : {
-            "action_id" : 8,
+            "action_id" : 10,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -820,10 +1122,10 @@
         },
         {
           "name" : "MyIngress.hulapp_mcast",
-          "id" : 4,
+          "id" : 5,
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 169,
+            "line" : 172,
             "column" : 10,
             "source_fragment" : "hulapp_mcast"
           },
@@ -841,7 +1143,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [6, 3, 1],
+          "action_ids" : [7, 4, 1],
           "actions" : ["MyIngress.set_hulapp_mcast", "MyIngress.drop", "NoAction"],
           "base_default_next" : null,
           "next_tables" : {
@@ -864,7 +1166,7 @@
           "id" : 0,
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 217,
+            "line" : 242,
             "column" : 12,
             "source_fragment" : "hdr.ipv4.isValid()"
           },
@@ -883,11 +1185,11 @@
           "true_next" : "MyIngress.ipv4_lpm"
         },
         {
-          "name" : "node_4",
+          "name" : "node_5",
           "id" : 1,
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 220,
+            "line" : 247,
             "column" : 16,
             "source_fragment" : "hdr.ipv4.protocol == HULAPP_PROTOCOL"
           },
@@ -909,11 +1211,11 @@
           "true_next" : "MyIngress.tab_hulapp"
         },
         {
-          "name" : "node_7",
+          "name" : "node_8",
           "id" : 2,
           "source_info" : {
             "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-            "line" : 235,
+            "line" : 262,
             "column" : 18,
             "source_fragment" : "the_path_util < the_min_path_util"
           },
@@ -931,7 +1233,7 @@
               }
             }
           },
-          "true_next" : "tbl_ip_forwarding236",
+          "true_next" : "tbl_ip_forwarding263",
           "false_next" : "MyIngress.hulapp_mcast"
         }
       ]
@@ -941,7 +1243,7 @@
       "id" : 1,
       "source_info" : {
         "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-        "line" : 266,
+        "line" : 292,
         "column" : 8,
         "source_fragment" : "MyEgress"
       },
@@ -957,7 +1259,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "/home/oublie/LFA_ADAPTER/p4/template/ip_forwarding.p4",
-        "line" : 278,
+        "line" : 306,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },

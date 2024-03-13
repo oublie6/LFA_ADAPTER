@@ -1,0 +1,2 @@
+table_add exced_time_table send_digest 1 => 
+table_add exced_time_table send_digest 0 => 

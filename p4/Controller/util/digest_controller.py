@@ -18,13 +18,23 @@ class DigestController():
                                                                      msg[:32])
         print(topic, device_id, ctx_id, list_id, buffer_id)
         print(num, len(msg))
-        offset = 9
         msg = msg[32:]
         for sub_message in range(num):
-            random_num, src, dst = struct.unpack("!BII", msg[0:offset])
-            print("random number:", random_num, "src ip:", str(ipaddress.IPv4Address(src)),
-                  "dst ip:", str(ipaddress.IPv4Address(dst)))
-            msg = msg[offset:]
+            digest_type, = struct.unpack("!H", msg[0:2])
+            msg=msg[4:]
+            print("digest_type:",digest_type)
+            # 摘要类型为0表示为traceroute数据包
+            if digest_type==0:
+                # Assuming ipv4_t follows right after digestType_t without padding.
+                ipv4_fields = struct.unpack("!BBHHHBBHII", msg[:20])
+                version_ihl, diffserv, total_len, identification, flags_frag, ttl, protocol, hdr_checksum, src, dst = ipv4_fields
+                msg = msg[20:]  # Move past the parsed ipv4_t
+                print(f"Digest type: {digest_type}")
+                print(f"Version/IHL: {version_ihl}, Diffserv: {diffserv}, Total Length: {total_len}")
+                print(f"Identification: {identification}, Flags/Frag: {flags_frag}, TTL: {ttl}")
+                print(f"Protocol: {protocol}, Header Checksum: {hdr_checksum}")
+                print("Source IP:", str(ipaddress.IPv4Address(src)))
+                print("Destination IP:", str(ipaddress.IPv4Address(dst)))
 
         self.controller.client.bm_learning_ack_buffer(ctx_id, list_id, buffer_id)
 

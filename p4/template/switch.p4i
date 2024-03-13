@@ -880,10 +880,10 @@ register<bit<32>>(5) local_util; // Local util per port.
 register<bit<48>>(5) last_packet_time;
 
 header hulapp_t {
-    bit<16> count; //Number of metrics a probe carries
-    bit<16> dst_tor; //The sending TOR
-    bit<32> ptag; //The probe tag 
-    bit<32> path_util; //The path util
+    bit<16> count;
+    bit<16> dst_tor;
+    bit<32> ptag;
+    bit<32> path_util;
 }
 
 const bit<16> TYPE_IPV4 = 0x800;
@@ -895,6 +895,7 @@ const bit<16> TYPE_IPV4 = 0x800;
 typedef bit<9> egressSpec_t;
 typedef bit<48> macAddr_t;
 typedef bit<32> ip4Addr_t;
+typedef bit<16> digestType_t;
 
 header ethernet_t {
     macAddr_t dstAddr;
@@ -927,10 +928,16 @@ struct parser_metadata_t {
     bit<32> ptag; //tag of probe packet 
 }
 
+struct traceroute_t{
+    digestType_t type;
+    ipv4_t ipv4;
+}
+
 struct metadata {
     /* empty */
     ingress_metadata_t ingress_metadata;
     parser_metadata_t parser_metadata;
+    traceroute_t traceroute;
 }
 
 struct headers {
@@ -961,22 +968,18 @@ parser MyParser(packet_in packet,
 
     state ipv4 {
         packet.extract(hdr.ipv4);
-        // transition select (hdr.ipv4.protocol) {
-        //     HULAPP_PROTOCOL      : parse_hulapp;
-        //     _                    : accept;
-        // }
-        transition accept;
+        transition select (hdr.ipv4.protocol) {
+            HULAPP_PROTOCOL : parse_hulapp;
+            _ : accept;
+        }
     }
 
-    // state parse_hulapp {
-    //     packet.extract(hdr.hulapp);
-    //     meta.parser_metadata.remaining = hdr.hulapp.count;
-    //     meta.parser_metadata.ptag = hdr.hulapp.ptag;
-    //     transition select(meta.parser_metadata.remaining) {
-    //         0 : accept;
-    //         _ : parse_metrics;
-    //     }
-    // }
+    state parse_hulapp {
+        packet.extract(hdr.hulapp);
+        meta.parser_metadata.remaining = hdr.hulapp.count;
+        meta.parser_metadata.ptag = hdr.hulapp.ptag;
+        transition accept;
+    }
 
 }
 
@@ -1049,19 +1052,41 @@ control MyIngress(inout headers hdr,
         default_action = NoAction();
     }
 
+action send_digest() {
+    meta.traceroute.type=0;
+    meta.traceroute.ipv4=hdr.ipv4;
+    digest(1, meta.traceroute);
+    mark_to_drop(standard_metadata);
+}
+
+    table exced_time_table {
+    key = {
+        hdr.ipv4.ttl: exact;
+        // 你的条件字段
+    }
+    actions = {
+        send_digest; // 定义一个总是调用 digest 的动作
+        NoAction;
+    }
+    size = 4;
+    default_action = NoAction();
+}
+
+
+
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
+
+        //decrease ttl by 1
+        hdr.ipv4.ttl = hdr.ipv4.ttl -1;
 
         //set the src mac address as the previous dst
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
 
-       //set the destination mac address that we got from the match in the table
+        //set the destination mac address that we got from the match in the table
         hdr.ethernet.dstAddr = dstAddr;
 
         //set the output port that we also get from the table
         standard_metadata.egress_spec = port;
-
-        //decrease ttl by 1
-        hdr.ipv4.ttl = hdr.ipv4.ttl -1;
 
     }
 
@@ -1083,6 +1108,8 @@ control MyIngress(inout headers hdr,
         //only if IPV4 the rule is applied. Therefore other packets will not be forwarded.
         if (hdr.ipv4.isValid()){
             ipv4_lpm.apply();
+
+            exced_time_table.apply();
 
             if (hdr.ipv4.protocol == HULAPP_PROTOCOL) {
               tab_hulapp.apply();
@@ -1121,7 +1148,6 @@ control MyIngress(inout headers hdr,
         //     last_packet_time.write((bit<32>) standard_metadata.egress_spec - 2,
         //                             standard_metadata.ingress_global_timestamp);
         //     local_util.write((bit<32>) standard_metadata.egress_spec - 2, tmp_util);
-
         // }
     }
 }
@@ -1133,7 +1159,9 @@ control MyIngress(inout headers hdr,
 control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-    apply { }
+    apply {
+
+     }
 }
 
 /*************************************************************************

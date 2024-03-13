@@ -36,7 +36,10 @@ def main():
         return visited
 
 
-    # 对每个交换机运行BFS，并配置路由
+    # 对每个目标主机运行BFS，并配置路由
     for host in hosts:
         print("当前配置路由节点",host)
         bfs(topo,host)
+
+    # 对每个交换机配置广播
+    # for sw in switches:
