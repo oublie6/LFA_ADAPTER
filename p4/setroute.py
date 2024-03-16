@@ -3,6 +3,7 @@ from p4utils.utils.helper import load_topo
 from p4utils.utils.sswitch_thrift_API import SimpleSwitchThriftAPI
 
 def main():
+    
     # 初始化网络拓扑
     topo = load_topo('topology.json')
     switches = topo.get_p4switches()

@@ -1,4 +1,7 @@
 import networkx as nx
+
+from util import ParseGraph, PrintGraphAttributes
+
 # from util import draw_nx
 
 # G = nx.read_graphml("topo/condensed_west_europe_delete.graphml")
@@ -7,7 +10,6 @@ import networkx as nx
 # print("nolongitude", nolongitude)
 # print("nolaitude", nolaitude)
 
-from util import ParseGraph,PrintGraphAttributes
 
 G=ParseGraph("topo/AttMpls.graphml")
 # print(G.nodes)

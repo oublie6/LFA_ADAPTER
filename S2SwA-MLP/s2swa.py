@@ -128,8 +128,10 @@ trg_len = trg.shape[0]
 # 这里我们简化处理，直接使用一个全1的向量来模拟
 trg_input = torch.ones_like(trg, dtype=torch.float).unsqueeze(1)  # 增加一个维度，以匹配解码器输入的期望维度
 
+src_batch = src.unsqueeze(0)
+
 # 模型前向传播
-output = model(src, trg_input, src_len, trg_len)
+output = model(src_batch, trg_input, src_len, trg_len)
 
 # 计算损失，注意输出层的维度和损失函数的要求
 loss = criterion(output, trg)

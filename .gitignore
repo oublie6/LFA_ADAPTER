@@ -1,4 +1,4 @@
 log/
 pcap/
-main.log
-route.log
+*.log
+S2SwA-MLP/data/

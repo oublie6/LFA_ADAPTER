@@ -1,6 +1,7 @@
-import networkx as nx
 import matplotlib.pyplot as plt
+import networkx as nx
 from mpl_toolkits.basemap import Basemap as Basemap
+
 
 # 解析topo图
 def ParseGraph(filepath):
@@ -22,8 +23,8 @@ def PrintGraphAttributes(graph):
         for key, value in attrs.items():
             print(f"    {key}: {value}")
 
-def draw_one():
-    G = nx.read_graphml("./topo/AttMpls.graphml")
+def draw_one(graph="AttMpls.graphml"):
+    G = nx.read_graphml("./topo/"+graph)
 
     pos = {}
 
@@ -37,7 +38,7 @@ def draw_one():
         pos[node]=[longitude,latitude]
 
 
-    nx.draw_networkx(G, pos, node_size=160, node_color='#1E90FF', font_size=20)
+    nx.draw_networkx(G, pos, node_size=100, node_color='#1E90FF', font_size=10)
 
     plt.show()
 

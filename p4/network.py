@@ -44,6 +44,20 @@ graphDir='p4/topologyzoo/topo/'
 #         # Start network
 #         net.startNetwork()
 
+import logging
+
+logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s - %(message)s')
+
+import time
+
+timeStart=time.perf_counter()
+def GetNetworkBuildTime(graph):
+        timeEnd=time.perf_counter()
+        buildTime = (timeEnd - timeStart)*1000
+        logging.info(f'{graph} 构建时间为: {buildTime}ms')
+        # with open("app.log","a+") as f:
+        #         f.write(graph+"构建时间为:"+str(buildTime)+"ms")
+
 def BuildNet(graph):
 
         G=ParseGraph(graph)
@@ -108,6 +122,8 @@ def BuildNet(graph):
         # Nodes general options
         net.enablePcapDumpAll()
         net.enableLogAll()
+
+        net.addTask("s1",GetNetworkBuildTime,args={graph})
 
         # Start network
         net.startNetwork()
