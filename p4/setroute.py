@@ -1,6 +1,9 @@
 from collections import deque
+
 from p4utils.utils.helper import load_topo
 from p4utils.utils.sswitch_thrift_API import SimpleSwitchThriftAPI
+
+switch_api = {}
 
 def main():
     
@@ -10,7 +13,7 @@ def main():
     hosts = topo.get_hosts()
 
     # 初始化一个字典来存储每个交换机的API接口
-    switch_api = {}
+    
     for sw in switches:
         thrift_port = topo.get_thrift_port(sw)
         switch_api[sw] = SimpleSwitchThriftAPI(thrift_port)
@@ -43,4 +46,34 @@ def main():
         bfs(topo,host)
 
     # 对每个交换机配置广播
-    # for sw in switches:
+    for sw in switches:
+        port=set()
+        hostsports=set()
+        for neighbor in topo.get_neighbors(sw):
+            if topo.isP4Switch(neighbor):
+                port.add(topo.node_to_node_port_num(sw,neighbor))
+            else:
+                hostsports.add(topo.node_to_node_port_num(sw,neighbor))
+        if len(port)>1:
+            print("sw,port",sw,port)
+            for p in port:
+                print(p)
+                mcastports=list(port-{p})
+                switch_api[sw].mc_mgrp_create(p)
+                node_handle=switch_api[sw].mc_node_create(p,mcastports)
+                switch_api[sw].mc_node_associate(p,node_handle)
+                switch_api[sw].table_add("hulapp_mcast","set_hulapp_mcast",{hex(p)},{hex(p)})
+        if len(hostsports)>0:
+            print("sw,hostsports",sw,hostsports)
+            for p in hostsports:
+                print(p)
+                mcastports=port
+                switch_api[sw].mc_mgrp_create(p)
+                node_handle=switch_api[sw].mc_node_create(p,mcastports)
+                switch_api[sw].mc_node_associate(p,node_handle)
+                switch_api[sw].table_add("hulapp_mcast","set_hulapp_mcast",{hex(p)},{hex(p)})
+
+            
+
+        
+        

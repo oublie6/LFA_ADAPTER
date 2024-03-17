@@ -1,6 +1,6 @@
-from s2swa import Seq2Seq, Encoder, Decoder, Attention, MLP
 import torch
 import torch.nn as nn
+from s2swa import MLP, Attention, Decoder, Encoder, Seq2Seq
 from torch.utils.data import DataLoader, TensorDataset
 
 # 生成模拟数据

@@ -1,8 +1,6 @@
-from p4.network import *
-
-
-
 import argparse
+
+from p4.network import *
 
 # 创建ArgumentParser对象
 parser = argparse.ArgumentParser(description='这是一个演示程序')

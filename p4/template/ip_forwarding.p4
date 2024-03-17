@@ -3,23 +3,35 @@
 #include <v1model.p4>
 
 const bit<8>  HULAPP_PROTOCOL = 254; 
+const bit<8>  HULAPP_DATA_PROTOCOL = 253;
+const bit<8>  HULAPP_BACKGROUND_PROTOCOL = 252;
+const bit<8>  HULAPP_TCP_DATA_PROTOCOL = 251;
+const bit<8>  HULAPP_UDP_DATA_PROTOCOL = 250;
+const bit<8>  TCP_PROTOCOL = 6;
+const bit<8>  UDP_PROTOCOL = 17;
+const bit<16> TYPE_IPV4 = 0x0800;
+const bit<16> TYPE_ARP  = 0x0806;
+const bit<9>  LOOP_THRESHOLD = 3;
+const bit<48> FLOWLET_TIMEOUT = 200000;
+const bit<48> LINK_TIMEOUT = 800000;
+//#define TAU_EXPONENT 9 // twice the probe frequency. if probe freq = 256 microsec, the TAU should be 512 microsec, and the TAU_EXPONENT would be 9
+#define TAU_EXPONENT 19 // twice the probe frequency. if probe freq = 256 millisec, the TAU should be 512 millisec, and the TAU_EXPONENT would be 19
+const bit<32> UTIL_RESET_TIME_THRESHOLD = 512000000;
 
 register<bit<32>>(2048) min_path_util; //Min path util on a port
-register<bit<16>>(2048) best_nhop;     //Best next hop
-register<bit<32>>(2048) link_util;     //Link util on a port.
+register<bit<9>>(2048) best_nhop;     //Best next hop
+register<bit<32>>(2048) version;     //Link util on a port.
 
 // Metric util
 register<bit<32>>(5) local_util;     // Local util per port.
 register<bit<48>>(5) last_packet_time;
 
 header hulapp_t {
-    bit<16>  count;    
-    bit<16>  dst_tor;    
-    bit<32>  ptag;   
-    bit<32>  path_util; 
+    bit<32>  targetID;    
+    bit<32>  util; 
+    bit<32>  version;   
+    bit<32>  transTime; 
 }
-
-const bit<16> TYPE_IPV4 = 0x800;
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
@@ -52,7 +64,7 @@ header ipv4_t {
 }
 
 struct ingress_metadata_t {
-    bit<16>  count;
+
 }
 
 struct parser_metadata_t {
@@ -109,8 +121,6 @@ parser MyParser(packet_in packet,
 
     state parse_hulapp {
         packet.extract(hdr.hulapp);
-        meta.parser_metadata.remaining = hdr.hulapp.count;
-        meta.parser_metadata.ptag = hdr.hulapp.ptag;
         transition accept;
     }
 
@@ -138,35 +148,14 @@ control MyIngress(inout headers hdr,
         mark_to_drop(standard_metadata);
     }
 
-    action add_hulapp_header() {
-
-        hdr.hulapp.setValid();
-        hdr.hulapp.count = 0;
-        //An extra hop in the probe takes up 16bits, or 1 word.
-        hdr.ipv4.ihl = hdr.ipv4.ihl + 1;
-    }
-
-/*----------------------------------------------------------------------*/
-/*Process Hula++ probes*/
-
-    action do_hulapp() {
-       //TODO: Process HulaPP probe
-    }
-
-
-    /*If Hula++ probe, stamp swid into Hula++ header*/
-    table tab_hulapp {
-        key = { hdr.ipv4.protocol : exact; }
-        actions        = { do_hulapp; NoAction; }
-        default_action =  NoAction();
-    }
 
 /*----------------------------------------------------------------------*/
 /*If Hula++ probe, mcast it to the right set of next hops*/
 
     // Write to the standard_metadata's mcast field!
     action set_hulapp_mcast(bit<16> mcast_id) {
-      standard_metadata.mcast_grp = mcast_id;
+        hdr.hulapp.transTime=hdr.hulapp.transTime+1;
+        standard_metadata.mcast_grp = mcast_id;
     }
 
     table hulapp_mcast {
@@ -185,25 +174,25 @@ control MyIngress(inout headers hdr,
         default_action = NoAction();
     }
 
-action send_digest() {
-    meta.traceroute.type=0;
-    meta.traceroute.ipv4=hdr.ipv4;
-    digest(1, meta.traceroute);
-    mark_to_drop(standard_metadata);
-}
+    action send_digest() {
+        meta.traceroute.type=0;
+        meta.traceroute.ipv4=hdr.ipv4;
+        digest(1, meta.traceroute);
+        mark_to_drop(standard_metadata);
+    }
 
     table exced_time_table {
-    key = {
-        hdr.ipv4.ttl: exact;
-        // 你的条件字段
+        key = {
+            hdr.ipv4.ttl: exact;
+            // 你的条件字段
+        }
+        actions = {
+            send_digest; // 定义一个总是调用 digest 的动作
+            NoAction;
+        }
+        size = 4;
+        default_action = NoAction();
     }
-    actions = {
-        send_digest; // 定义一个总是调用 digest 的动作
-        NoAction;
-    }
-    size = 4;
-    default_action = NoAction();
-}
 
 
 
@@ -236,52 +225,71 @@ action send_digest() {
         default_action = NoAction();
     }
 
-    apply {
+    action update_util(bit<32> the_targetID,bit<32> the_util,bit<9> the_best_nhop){
+        min_path_util.write(the_targetID,the_util);
+        best_nhop.write(the_targetID,the_best_nhop);
+    }
 
+    apply {
         //only if IPV4 the rule is applied. Therefore other packets will not be forwarded.
         if (hdr.ipv4.isValid()){
-            ipv4_lpm.apply();
-
-            exced_time_table.apply();
-
             if (hdr.ipv4.protocol == HULAPP_PROTOCOL) {
-              tab_hulapp.apply();
+                bit<32> the_version=hdr.hulapp.version;
+                bit<32> the_targetID = hdr.hulapp.targetID;
+                bit<32> the_util = hdr.hulapp.util;
+                bit<32> local_version;
+                version.read(local_version,the_targetID);
+                if (the_version < local_version){
+                    mark_to_drop(standard_metadata);
+                }
+                else{
+                    bit<32> the_local_util;
+                    local_util.read(the_local_util, (bit<32>)standard_metadata.ingress_port);
+                    if (the_util < the_local_util){
+                        the_util = the_local_util;
+                        hdr.hulapp.util=the_util;
+                    }
+                    bit<32> the_min_path_util;
+                    min_path_util.read(the_min_path_util,the_targetID);
+                    if (the_version == local_version){
+                        if (the_util<the_min_path_util){
+                            update_util(the_targetID,the_util,standard_metadata.ingress_port);
+                            hulapp_mcast.apply();
+                        }
+                        else{
+                            mark_to_drop(standard_metadata);
+                        }
+                    }
+                    else {
+                        version.write(the_targetID,the_version);
+                        update_util(the_targetID,the_util,standard_metadata.ingress_port);
+                        hulapp_mcast.apply();
+                    }
+                }
+            }
+            else {
+                ipv4_lpm.apply();
 
-            
-              //Update the min. path util metric:
-              bit<16> the_dst_tor = hdr.hulapp.dst_tor;
-              bit<32> the_path_util = hdr.hulapp.path_util;
-
-              /*TODO: Update the Hula++ header with the current path util at this link*/
-              //Ang: This may require the use of Counter types???
-
-              //Update the min path util if we've found a better path
-              bit<32> the_min_path_util;
-              min_path_util.read(the_min_path_util, (bit<32>)the_dst_tor);
-
-              if (the_path_util < the_min_path_util) {
-                min_path_util.write((bit<32>)the_dst_tor, the_path_util);
-              }
-
-              //Multicast the Hula++ probe 
-              hulapp_mcast.apply();
+                exced_time_table.apply();
+                // Update the path utilization if necessary
+                if (standard_metadata.egress_spec != 1) {
+                    bit<32> tmp_util = 0;
+                    bit<48> tmp_time = 0;
+                    bit<32> time_diff = 0;
+                    local_util.read(tmp_util, (bit<32>) standard_metadata.egress_spec);
+                    last_packet_time.read(tmp_time, (bit<32>) standard_metadata.egress_spec);
+                    time_diff = (bit<32>)(standard_metadata.ingress_global_timestamp - tmp_time);
+                    bit<32> temp = tmp_util*time_diff;
+                    tmp_util = time_diff > UTIL_RESET_TIME_THRESHOLD ?
+                                0 : standard_metadata.packet_length + tmp_util - (temp >> TAU_EXPONENT);
+                    last_packet_time.write((bit<32>) standard_metadata.egress_spec,
+                                            standard_metadata.ingress_global_timestamp);
+                    local_util.write((bit<32>) standard_metadata.egress_spec, tmp_util);
+                }
             }
         }
-        //  // Update the path utilization if necessary
-        // if (standard_metadata.egress_spec != 1) {
-        //     bit<32> tmp_util = 0;
-        //     bit<48> tmp_time = 0;
-        //     bit<32> time_diff = 0;
-        //     local_util.read(tmp_util, (bit<32>) standard_metadata.egress_spec - 2);
-        //     last_packet_time.read(tmp_time, (bit<32>) standard_metadata.egress_spec - 2);
-        //     time_diff = (bit<32>)(standard_metadata.ingress_global_timestamp - tmp_time);
-        //     bit<32> temp = tmp_util*time_diff;
-        //     tmp_util = time_diff > UTIL_RESET_TIME_THRESHOLD ?
-        //                 0 : standard_metadata.packet_length + tmp_util - (temp >> TAU_EXPONENT);
-        //     last_packet_time.write((bit<32>) standard_metadata.egress_spec - 2,
-        //                             standard_metadata.ingress_global_timestamp);
-        //     local_util.write((bit<32>) standard_metadata.egress_spec - 2, tmp_util);
-        // }
+
+
     }
 }
 
@@ -332,7 +340,7 @@ control MyDeparser(packet_out packet, in headers hdr) {
         //parsed headers have to be added again into the packet.
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
-
+        packet.emit(hdr.hulapp);
 
     }
 }

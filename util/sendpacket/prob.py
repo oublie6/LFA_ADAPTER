@@ -1,4 +1,5 @@
-from scapy.packet import Packet
+from scapy.all import *
+
 
 class Prob(Packet):
     name = "Prob"

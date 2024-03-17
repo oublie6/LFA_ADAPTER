@@ -1,10 +1,13 @@
 import threading
+
 from prob import Prob
-from scapy.all import Ether, IP, TCP, sendp
+from scapy.all import *
+
+# 获取本地网卡
 
 # 定义一个函数用于从特定的网络接口发送数据包
 def send_prob(iface,targetID,version=0):
-    packet = Ether()/IP(dst="1.2.3.4")/Prob(targetID=targetID,util=0,version=version,transTime=0)
+    packet = Ether()/IP(dst="1.2.3.4",proto=254)/Prob(targetID=targetID,util=0,version=version,transTime=0)
     sendp(packet, iface=iface)
 
 def mutisend_prob(targetID,version):
@@ -15,3 +18,18 @@ def mutisend_prob(targetID,version):
     thread1.start()
     thread2.start()
 
+# 获取本地网卡列表
+interfaces = get_if_list()
+
+# 选择第一个非回环网卡接口发送数据包
+selected_iface = None
+for iface in interfaces:
+    if "lo" not in iface:
+        selected_iface = iface
+        break
+
+if selected_iface:
+    print(f"Selected interface: {selected_iface}")
+    send_prob(selected_iface, targetID=1, version=100)
+else:
+    print("No non-loopback interfaces found.")

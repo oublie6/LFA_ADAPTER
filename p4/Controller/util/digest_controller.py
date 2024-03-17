@@ -1,9 +1,11 @@
-import nnpy
-import struct
 import ipaddress
+import struct
+import threading
+
+import nnpy
 from p4utils.utils.helper import load_topo
 from p4utils.utils.sswitch_thrift_API import SimpleSwitchThriftAPI
-import threading
+
 
 class DigestController():
 
