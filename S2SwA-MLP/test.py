@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
+import time
 
 # 设定随机种子以便结果可重复
 torch.manual_seed(0)
@@ -55,6 +56,7 @@ def main():
             loss.backward()
             optimizer.step()
         print(f'Epoch {epoch + 1}, Loss: {loss.item()}')
+        time.sleep(1)
 
     # 测试模型
     with torch.no_grad():
