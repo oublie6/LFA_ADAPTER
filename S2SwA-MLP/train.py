@@ -1,9 +1,10 @@
+from test import  main
 import torch
 import torch.nn as nn
 from s2swa import MLP, Attention, Decoder, Encoder, Seq2Seq
 from torch.utils.data import DataLoader, TensorDataset
 
-# 生成模拟数据
+# 读取数据集
 dataset_size = 1000  # 数据集中的样本总数
 src_data = torch.randn(dataset_size, 32)  # 源数据
 trg_data = torch.randint(0, 2, (dataset_size,))  # 目标数据
@@ -29,6 +30,7 @@ model = Seq2Seq(enc, dec, mlp, device).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+main()
 # 训练循环
 num_epochs = 10
 
