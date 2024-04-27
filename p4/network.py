@@ -1,4 +1,5 @@
 from p4utils.mininetlib.network_API import NetworkAPI
+
 from p4.topologyzoo.util import *
 
 templateDir='p4/template/'
@@ -49,6 +50,9 @@ import logging
 logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s - %(message)s')
 
 import time
+from pprint import pprint
+
+exestr="iperf -s "
 
 timeStart=time.perf_counter()
 def GetNetworkBuildTime(graph):
@@ -65,7 +69,7 @@ def BuildNet(graph):
         net = NetworkAPI()
 
         # Network general options
-        net.setLogLevel('info')
+        net.setLogLevel('debug')
         net.enableCli()
         
         # 添加交换机节点和主机
@@ -107,7 +111,7 @@ def BuildNet(graph):
         # 设置链路带宽，单位为Mbps
         net.setBwAll(5)
 
-        from pprint import pprint
+        
 
         # 显示node之间的链路数
         for node1 in net.nodes():
@@ -116,6 +120,15 @@ def BuildNet(graph):
                         if net.areNeighbors(node1, node2):
                                 print(node1,node2,len(net._linkEntry(node1, node2)[0]))
 
+
+        net.addTask("s1",GetNetworkBuildTime,args={graph})
+        net.addTaskFile("p4/Controller/tasks.txt")
+       
+        
+        for h in net.hosts():
+                net.addTask(name=h,exe=exestr)
+                # exit(0)
+
         # Assignment strategy
         net.l3()
 
@@ -123,7 +136,6 @@ def BuildNet(graph):
         net.enablePcapDumpAll()
         net.enableLogAll()
 
-        net.addTask("s1",GetNetworkBuildTime,args={graph})
-
         # Start network
         net.startNetwork()
+

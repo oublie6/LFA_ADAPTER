@@ -10,4 +10,4 @@ sudo gnome-terminal -- bash -c "python route.py 2>&1 | tee route.log" &
 sleep 1
 
 
-sudo gnome-terminal -- bash -c "sudo wireshark" &
+# sudo gnome-terminal -- bash -c "sudo wireshark" &

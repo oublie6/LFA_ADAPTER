@@ -1,2 +1,2 @@
-table_add exced_time_table send_digest 1 => 
-table_add exced_time_table send_digest 0 => 
+table_add exced_time_table send_traceroute 1 => 
+table_add exced_time_table send_traceroute 0 => 

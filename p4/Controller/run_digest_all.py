@@ -3,8 +3,7 @@ from collections import deque
 
 from p4utils.utils.helper import load_topo
 from p4utils.utils.sswitch_thrift_API import SimpleSwitchThriftAPI
-
-from .util.digest_controller import run_digest_controller
+from util.digest_controller import run_digest_controller
 
 topo = load_topo('topology.json')
 switches = topo.get_p4switches()
@@ -28,3 +27,6 @@ def main():
     # Wait for all threads to finish
     for thread in threads:
         thread.join()
+
+if __name__=="__main__":
+    main()

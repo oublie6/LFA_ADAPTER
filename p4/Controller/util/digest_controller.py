@@ -37,6 +37,19 @@ class DigestController():
                 print(f"Protocol: {protocol}, Header Checksum: {hdr_checksum}")
                 print("Source IP:", str(ipaddress.IPv4Address(src)))
                 print("Destination IP:", str(ipaddress.IPv4Address(dst)))
+            # 摘要类型为1表示为攻击源摘要
+            elif digest_type==1:
+                # Assuming ipv4_t follows right after digestType_t without padding.
+                ipv4_fields = struct.unpack("!BBHHHBBHII", msg[:20])
+                version_ihl, diffserv, total_len, identification, flags_frag, ttl, protocol, hdr_checksum, src, dst = ipv4_fields
+                msg = msg[20:]  # Move past the parsed ipv4_t
+                # print(f"Digest type: {digest_type}")
+                # print(f"Version/IHL: {version_ihl}, Diffserv: {diffserv}, Total Length: {total_len}")
+                # print(f"Identification: {identification}, Flags/Frag: {flags_frag}, TTL: {ttl}")
+                # print(f"Protocol: {protocol}, Header Checksum: {hdr_checksum}")
+                # print("Source IP:", str(ipaddress.IPv4Address(src)))
+                # print("Destination IP:", str(ipaddress.IPv4Address(dst)))
+                print("可疑Source IP:", str(ipaddress.IPv4Address(src)))
 
         self.controller.client.bm_learning_ack_buffer(ctx_id, list_id, buffer_id)
 

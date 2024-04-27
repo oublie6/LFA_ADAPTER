@@ -2,6 +2,8 @@
 #include <core.p4>
 #include <v1model.p4>
 
+const bit<32> BLOOM_FILTER_ENTRIES=2048;
+
 const bit<8>  HULAPP_PROTOCOL = 254; 
 const bit<8>  HULAPP_DATA_PROTOCOL = 253;
 const bit<8>  HULAPP_BACKGROUND_PROTOCOL = 252;
@@ -21,6 +23,10 @@ const bit<32> UTIL_RESET_TIME_THRESHOLD = 512000000;
 register<bit<32>>(2048) min_path_util; //Min path util on a port
 register<bit<9>>(2048) best_nhop;     //Best next hop
 register<bit<32>>(2048) version;     //Link util on a port.
+register<bit<32>>(2048) lfa_on;     //lfa重路由模式状态
+
+register<bit<32>>(5) attack_source_mode;     // 攻击源检测模式状态
+register<bit<1>>(2048) bloom_filter; // 布隆过滤器
 
 // Metric util
 register<bit<32>>(5) local_util;     // Local util per port.
@@ -73,16 +79,29 @@ struct parser_metadata_t {
     bit<32>  ptag;      //tag of probe packet 
 }
 
-struct traceroute_t{
+struct digestMessage_t{
     digestType_t type;
     ipv4_t ipv4;
+}
+
+struct link_state_t{
+    digestType_t type;
+    bit<32> deq_time;
+    bit<32> deq_packets;
+    bit<32> utils;
+    bit<32> meter_return;
 }
 
 struct metadata {
     /* empty */
     ingress_metadata_t   ingress_metadata;
     parser_metadata_t   parser_metadata;
-    traceroute_t traceroute;
+    digestMessage_t digestMessage;
+    link_state_t link_state;
+    bit<32> hash1;
+    bit<32> hash2;
+    bit<1> hash1_out;
+    bit<1> hash2_out;
 }
 
 struct headers {
@@ -143,6 +162,9 @@ control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
+    counter(1, CounterType.packets_and_bytes) prob_counter;
+    counter(1, CounterType.packets_and_bytes) all_counter;
+    meter(32w16384, MeterType.bytes) my_meter;
 
     action drop() {
         mark_to_drop(standard_metadata);
@@ -174,11 +196,23 @@ control MyIngress(inout headers hdr,
         default_action = NoAction();
     }
 
-    action send_digest() {
-        meta.traceroute.type=0;
-        meta.traceroute.ipv4=hdr.ipv4;
-        digest(1, meta.traceroute);
+    action send_traceroute() {
+        meta.digestMessage.type=0;
+        meta.digestMessage.ipv4=hdr.ipv4;
+        digest(1, meta.digestMessage);
         mark_to_drop(standard_metadata);
+    }
+
+    action send_attack_ip() {
+        meta.digestMessage.type=1;
+        meta.digestMessage.ipv4=hdr.ipv4;
+        digest(1, meta.digestMessage);
+    }
+
+    action send_link_state() {
+        meta.digestMessage.type=2;
+        meta.digestMessage.ipv4=hdr.ipv4;
+        digest(1, meta.digestMessage);
     }
 
     table exced_time_table {
@@ -187,16 +221,49 @@ control MyIngress(inout headers hdr,
             // 你的条件字段
         }
         actions = {
-            send_digest; // 定义一个总是调用 digest 的动作
+            send_traceroute; // 定义一个总是调用 digest 的动作
             NoAction;
         }
         size = 4;
         default_action = NoAction();
     }
+    
+    bit<32> packet_targetID;
+
+
+    action get_lfa_server(bit<32> targetID) {
+        packet_targetID=targetID;
+    }
+
+    table lfa_server {
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            get_lfa_server;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction();
+    }
+
+    action check_bloom_filter(){
+        hash(meta.hash1, HashAlgorithm.crc16, (bit<32>)0, {hdr.ipv4.srcAddr}, (bit<32>)BLOOM_FILTER_ENTRIES);
+        hash(meta.hash2, HashAlgorithm.crc32, (bit<32>)0, {hdr.ipv4.srcAddr}, (bit<32>)BLOOM_FILTER_ENTRIES);
+        bloom_filter.read(meta.hash1_out,meta.hash1);
+        bloom_filter.read(meta.hash2_out,meta.hash2);
+    }
+
+    action set_bloom_filter(){
+        bloom_filter.write(meta.hash1,1);
+        bloom_filter.write(meta.hash2,1);
+    }
 
 
 
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
+        
         
         //decrease ttl by 1
         hdr.ipv4.ttl = hdr.ipv4.ttl -1;
@@ -234,6 +301,14 @@ control MyIngress(inout headers hdr,
         //only if IPV4 the rule is applied. Therefore other packets will not be forwarded.
         if (hdr.ipv4.isValid()){
             if (hdr.ipv4.protocol == HULAPP_PROTOCOL) {
+                if (hdr.hulapp.transTime<6){
+                    meta.link_state.type=2;
+                    meta.link_state.deq_time=standard_metadata.deq_timedelta;
+                    meta.link_state.deq_packets=(bit<32>)standard_metadata.deq_qdepth;
+                    my_meter.execute_meter<bit<32>>((bit<32>)standard_metadata.ingress_port, meta.link_state.meter_return);
+                    send_link_state();
+                }
+                prob_counter.count((bit<32>)0);
                 bit<32> the_version=hdr.hulapp.version;
                 bit<32> the_targetID = hdr.hulapp.targetID;
                 bit<32> the_util = hdr.hulapp.util;
@@ -268,24 +343,48 @@ control MyIngress(inout headers hdr,
                 }
             }
             else {
+                if (lfa_server.apply().hit){
+                    bit<32> the_lfa_on;
+                    lfa_on.read(the_lfa_on,packet_targetID);
+                    if (the_lfa_on==1){
+                        bit<9> the_best_nhop;
+                        best_nhop.read(the_best_nhop,packet_targetID);
+                        if (the_best_nhop!=0){
+                            standard_metadata.egress_spec=the_best_nhop;
+                            return;
+                        }
+                    }
+                }
                 ipv4_lpm.apply();
+
+                my_meter.execute_meter<bit<32>>((bit<32>)standard_metadata.egress_port, meta.link_state.meter_return);
 
                 exced_time_table.apply();
                 // Update the path utilization if necessary
-                if (standard_metadata.egress_spec != 1) {
-                    bit<32> tmp_util = 0;
-                    bit<48> tmp_time = 0;
-                    bit<32> time_diff = 0;
-                    local_util.read(tmp_util, (bit<32>) standard_metadata.egress_spec);
-                    last_packet_time.read(tmp_time, (bit<32>) standard_metadata.egress_spec);
-                    time_diff = (bit<32>)(standard_metadata.ingress_global_timestamp - tmp_time);
-                    bit<32> temp = tmp_util*time_diff;
-                    tmp_util = time_diff > UTIL_RESET_TIME_THRESHOLD ?
-                                0 : standard_metadata.packet_length + tmp_util - (temp >> TAU_EXPONENT);
-                    last_packet_time.write((bit<32>) standard_metadata.egress_spec,
-                                            standard_metadata.ingress_global_timestamp);
-                    local_util.write((bit<32>) standard_metadata.egress_spec, tmp_util);
+
+                bit<32> the_attack_source_mode=0;
+                attack_source_mode.read(the_attack_source_mode,(bit<32> )standard_metadata.egress_spec);
+                if (the_attack_source_mode==1){
+                    check_bloom_filter();
+                    if (meta.hash1_out==0 || meta.hash2_out==0 ){
+                        send_attack_ip();
+                        set_bloom_filter();
+                    }
                 }
+            }
+            if (standard_metadata.egress_spec != 1) {
+                bit<32> tmp_util = 0;
+                bit<48> tmp_time = 0;
+                bit<32> time_diff = 0;
+                local_util.read(tmp_util, (bit<32>) standard_metadata.egress_spec);
+                last_packet_time.read(tmp_time, (bit<32>) standard_metadata.egress_spec);
+                time_diff = (bit<32>)(standard_metadata.ingress_global_timestamp - tmp_time);
+                bit<32> temp = tmp_util*time_diff;
+                tmp_util = time_diff > UTIL_RESET_TIME_THRESHOLD ?
+                            0 : standard_metadata.packet_length + tmp_util - (temp >> TAU_EXPONENT);
+                last_packet_time.write((bit<32>) standard_metadata.egress_spec,
+                                        standard_metadata.ingress_global_timestamp);
+                local_util.write((bit<32>) standard_metadata.egress_spec, tmp_util);
             }
         }
 

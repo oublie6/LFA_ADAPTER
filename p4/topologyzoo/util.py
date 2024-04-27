@@ -1,3 +1,6 @@
+import random
+from collections import defaultdict
+
 import matplotlib.pyplot as plt
 import networkx as nx
 from mpl_toolkits.basemap import Basemap as Basemap
@@ -5,7 +8,10 @@ from mpl_toolkits.basemap import Basemap as Basemap
 
 # 解析topo图
 def ParseGraph(filepath):
-    return nx.read_graphml(filepath)
+    graph=nx.read_graphml(filepath)
+    print(filepath,"节点数:",len(graph.nodes()))
+    print(filepath,"边数:",len(graph.edges()))
+    return  graph
 
 # 打印节点属性和边属性
 def PrintGraphAttributes(graph):
@@ -35,10 +41,47 @@ def draw_one(graph="AttMpls.graphml"):
         latitude = G.nodes[node].get('Latitude')
         if latitude == None:
             latitude = 1
+        
         pos[node]=[longitude,latitude]
 
 
     nx.draw_networkx(G, pos, node_size=100, node_color='#1E90FF', font_size=10)
+
+def draw_one2(graph="AttMpls.graphml"):
+    G = nx.read_graphml("./topo/"+graph)
+
+    pos = {}
+    nodeColors=[]
+    sum=len(G.nodes())
+    bots=int(sum/4)
+    decoy=int(sum/4)
+    rest=sum-bots-decoy-1
+    nodeColors=["green"]
+    for i in range(bots):
+        nodeColors.append("red")
+    for i in range(decoy):
+        nodeColors.append("yellow")
+    for i in range(rest):
+        nodeColors.append('#1E90FF')
+    random.shuffle(nodeColors)
+    colerToNode=defaultdict(list)
+    for i in range(sum):
+        colerToNode[nodeColors[i]].append(i)
+    for k in colerToNode:
+        print(k,colerToNode[k])
+
+    for node in G.nodes():
+        longitude = G.nodes[node].get('Longitude')
+        if longitude == None:
+            longitude = 1
+        latitude = G.nodes[node].get('Latitude')
+        if latitude == None:
+            latitude = 1
+        
+        pos[node]=[longitude,latitude]
+
+
+    nx.draw_networkx(G, pos, node_size=100, node_color=nodeColors, font_size=10)
 
     plt.show()
 
