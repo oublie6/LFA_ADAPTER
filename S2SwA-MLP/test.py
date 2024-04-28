@@ -36,11 +36,13 @@ class LSTMClassifier(nn.Module):
 def main():
 
     # 初始化模型
+    print("初始化模型")
     model = LSTMClassifier(input_dim=10, hidden_dim=50, mlp_hidden_dim=100, num_layers=1)
     criterion = nn.CrossEntropyLoss()
     optimizer = Adam(model.parameters(), lr=0.001)
 
     # 生成数据
+    print("加载数据集")
     train_data, train_labels = generate_data(100, 30)  # 100个样本，每个样本长度为15
     test_data, test_labels = generate_data(20, 30)     # 测试数据
 
@@ -48,15 +50,17 @@ def main():
     train_loader = DataLoader(TensorDataset(train_data, train_labels), batch_size=10, shuffle=True)
 
     # 训练模型
-    for epoch in range(2000):
+    for epoch in range(100):
+        print(f"开始第{epoch}次训练")
         for inputs, labels in train_loader:
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+        time.sleep(60)
         print(f'Epoch {epoch + 1}, Loss: {loss.item()}')
-        time.sleep(1)
+
 
     # 测试模型
     with torch.no_grad():
