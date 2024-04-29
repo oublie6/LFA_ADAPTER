@@ -52,7 +52,7 @@ logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s 
 import time
 from pprint import pprint
 
-exestr="iperf -s "
+exestr=r"bash -c 'iperf -s > iperfserver/"
 
 timeStart=time.perf_counter()
 def GetNetworkBuildTime(graph):
@@ -69,7 +69,7 @@ def BuildNet(graph):
         net = NetworkAPI()
 
         # Network general options
-        net.setLogLevel('debug')
+        net.setLogLevel('info')
         net.enableCli()
         
         # 添加交换机节点和主机
@@ -121,12 +121,10 @@ def BuildNet(graph):
                                 print(node1,node2,len(net._linkEntry(node1, node2)[0]))
 
 
-        net.addTask("s1",GetNetworkBuildTime,args={graph})
-        net.addTaskFile("p4/Controller/tasks.txt")
-       
+        # net.addTask("s1",GetNetworkBuildTime,args={graph})
         
         for h in net.hosts():
-                net.addTask(name=h,exe=exestr)
+                net.addTask(name=h,exe=exestr+h+r"'",start=1)
                 # exit(0)
 
         # Assignment strategy
