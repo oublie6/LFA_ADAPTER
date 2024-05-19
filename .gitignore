@@ -2,3 +2,5 @@ log/
 pcap/
 *.log
 S2SwA-MLP/data/
+iperfclient/
+iperfserver/
