@@ -68,3 +68,7 @@ def main():
         _, predicted = torch.max(outputs, 1)
         accuracy = (predicted == test_labels).float().mean()
         print(f'Test Accuracy: {accuracy.item()}')
+
+def sprint(s):
+    time.sleep(5)
+    print(s)

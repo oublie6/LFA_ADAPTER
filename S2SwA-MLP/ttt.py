@@ -1,10 +1,8 @@
 import torch
-from test import sprint
 import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
 import math
-from sklearn.metrics import confusion_matrix, precision_score, recall_score
 
 # 编码器定义
 class Encoder(nn.Module):
@@ -166,10 +164,10 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=32, s
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = Seq2Seq(INPUT_DIM, HID_DIM, N_LAYERS, SEQ_LEN, OUTPUT_DIM).to(device)
 criterion = nn.BCELoss()  # 使用二分类交叉熵损失函数
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # 训练模型
-num_epochs = 50
+num_epochs = 200
 for epoch in range(num_epochs):
     model.train()
     for inputs, targets in train_loader:
@@ -184,7 +182,7 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
 
-    sprint(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+    print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
 
 # 保存模型
 torch.save(model.state_dict(), 'seq2seq_model.pth')
@@ -192,8 +190,6 @@ print("Model saved as seq2seq_model.pth")
 
 # 预测
 model.eval()
-all_targets = []
-all_predicted = []
 with torch.no_grad():
     correct = 0
     total = 0
@@ -203,25 +199,5 @@ with torch.no_grad():
         predicted = (outputs > 0.5).float()  # 将输出转换为二进制标签
         total += targets.size(0)
         correct += (predicted == targets).sum().item() / 2  # 每个样本有两个标签，所以除以2
-        all_targets.extend(targets.cpu().numpy())
-        all_predicted.extend(predicted.cpu().numpy())
 
     print(f'Accuracy of the model on the test set: {100 * correct / total:.2f}%')
-
-# 计算混淆矩阵
-all_targets = torch.tensor(all_targets)
-all_predicted = torch.tensor(all_predicted)
-cm = confusion_matrix(all_targets.argmax(axis=1), all_predicted.argmax(axis=1))
-precision = precision_score(all_targets.argmax(axis=1), all_predicted.argmax(axis=1), average='binary')
-recall = recall_score(all_targets.argmax(axis=1), all_predicted.argmax(axis=1), average='binary')
-
-# 计算漏报率（FNR）和误报率（FPR）
-fnr = cm[1, 0] / (cm[1, 0] + cm[1, 1])
-fpr = cm[0, 1] / (cm[0, 0] + cm[0, 1])
-
-print('Confusion Matrix:')
-print(cm)
-print(f'Precision: {precision:.4f}')
-print(f'Recall: {recall:.4f}')
-print(f'False Negative Rate (FNR): {fnr:.4f}')
-print(f'False Positive Rate (FPR): {fpr:.4f}')
