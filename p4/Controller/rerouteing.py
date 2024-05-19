@@ -6,5 +6,3 @@ def StartRerouting(targetID):
 
 def EndRerouting(targetID):
     WriteRegister("lfa_on",targetID,0)
-
-    

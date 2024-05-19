@@ -40,3 +40,46 @@
 0 h79 hping3 h31 -n 6
 0 h80 hping3 h31 -n 6
 0 h99 hping3 h31 -n 6
+
+5 h1 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h2 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h4 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h6 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h9 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h10 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h11 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h15 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h17 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h28 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h34 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h50 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h54 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h57 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h60 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h64 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h76 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h77 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h79 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h80 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h99 iperf -u -c h30 -b 5M -i 1 -t 50
+5 h1 iperf -u -c h30 -b 5M -i 1 -t 50
+55 h2 iperf -u -c h30 -b 5M -i 1 -t 50
+55 h4 iperf -u -c h30 -b 5M -i 1 -t 50
+55 h6 iperf -u -c h30 -b 5M -i 1 -t 50
+55 h9 iperf -u -c h30 -b 5M -i 1 -t 50
+55 h10 iperf -u -c h31 -b 5M -i 1 -t 50
+55 h11 iperf -u -c h31 -b 5M -i 1 -t 50
+55 h15 iperf -u -c h31 -b 5M -i 1 -t 50
+55 h17 iperf -u -c h31 -b 5M -i 1 -t 50
+55 h28 iperf -u -c h31 -b 5M -i 1 -t 50
+55 h34 iperf -u -c h31 -b 5M -i 1 -t 50
+55 h50 iperf -u -c h31 -b 5M -i 1 -t 50
+105 h54 iperf -u -c h31 -b 5M -i 1 -t 50
+105 h57 iperf -u -c h31 -b 5M -i 1 -t 50
+105 h60 iperf -u -c h31 -b 5M -i 1 -t 50
+105 h64 iperf -u -c h31 -b 5M -i 1 -t 50
+105 h76 iperf -u -c h31 -b 5M -i 1 -t 50
+105 h77 iperf -u -c h31 -b 5M -i 1 -t 50
+105 h79 iperf -u -c h31 -b 5M -i 1 -t 50
+105 h80 iperf -u -c h31 -b 5M -i 1 -t 50
+105 h99 iperf -u -c h31 -b 5M -i 1 -t 50

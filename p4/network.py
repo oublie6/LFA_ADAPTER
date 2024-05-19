@@ -52,7 +52,9 @@ logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s 
 import time
 from pprint import pprint
 
-exestr=r"bash -c 'iperf -s > iperfserver/"
+iperfServerStr=r"bash -c 'iperf3 -s > iperfserver/"
+iperfClientStr1=r"bash -c 'iperf3 -c  "
+iperfClientStr2=r" -u -b 1M -t 60s -i 1 > iperfclient/"
 
 timeStart=time.perf_counter()
 def GetNetworkBuildTime(graph):
@@ -109,10 +111,9 @@ def BuildNet(graph):
                 # print(f"    {key}: {value}")
         
         # 设置链路带宽，单位为Mbps
-        net.setBwAll(5)
+        net.setBwAll(50)
 
         
-
         # 显示node之间的链路数
         for node1 in net.nodes():
                 pprint(node1)
@@ -122,10 +123,14 @@ def BuildNet(graph):
 
 
         # net.addTask("s1",GetNetworkBuildTime,args={graph})
-        
+        hnow=0
         for h in net.hosts():
-                net.addTask(name=h,exe=exestr+h+r"'",start=1)
+                hnow+=1
+                ipp="10."+str(hnow+1)+"."+str(hnow)+".2"
+                net.addTask(name=h,exe=iperfServerStr+h+r"'",start=1)
+                net.addTask(name=h,exe=iperfClientStr1+ipp+iperfClientStr2+h+r"'",start=10)
                 # exit(0)
+
 
         # Assignment strategy
         net.l3()

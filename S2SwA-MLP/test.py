@@ -1,9 +1,10 @@
+import time
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader, TensorDataset
-import numpy as np
-import time
 
 # 设定随机种子以便结果可重复
 torch.manual_seed(0)
@@ -70,5 +71,5 @@ def main():
         print(f'Test Accuracy: {accuracy.item()}')
 
 def sprint(s):
-    time.sleep(5)
+    # time.sleep(5)
     print(s)

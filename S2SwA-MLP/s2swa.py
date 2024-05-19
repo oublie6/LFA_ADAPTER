@@ -1,10 +1,12 @@
-import torch
+import math
 from test import sprint
+
+import pandas as pd
+import torch
 import torch.nn as nn
 import torch.optim as optim
-import pandas as pd
-import math
 from sklearn.metrics import confusion_matrix, precision_score, recall_score
+
 
 # 编码器定义
 class Encoder(nn.Module):
