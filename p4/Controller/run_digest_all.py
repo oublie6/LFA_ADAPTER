@@ -8,6 +8,10 @@ from util.digest_controller import run_digest_controller
 topo = load_topo('topology.json')
 switches = topo.get_p4switches()
 hosts = topo.get_hosts()
+countTraceroute={}
+pairTraceroute={}
+detectIP={}
+maliciousScore={}
 
 # 初始化一个字典来存储每个交换机的API接口
 switch_api = {}

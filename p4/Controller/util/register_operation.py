@@ -17,7 +17,9 @@ def WriteRegister(registername,theindex,thevalue):
         switch_api.register_write(register_name=registername,index=theindex,value=thevalue)
 
 def ReadRegister(registername,theindex):
+    ret=map()
     for sw in switches:
         thrift_port = topo.get_thrift_port(sw)
         switch_api = SimpleSwitchThriftAPI(thrift_port)
-        return switch_api.register_read(register_name=registername,index=theindex,show=True)
+        ret[sw]=switch_api.register_read(register_name=registername,index=theindex,show=True)
+    return ret
