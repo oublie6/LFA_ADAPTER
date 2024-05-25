@@ -23,6 +23,11 @@ def main():
         visited = {start: None}
         queue = deque([start])
         ip_start = topo.get_host_ip(start)+'/24'
+        dst_mac=topo.get_host_mac(start)
+        nnn=topo.get_neighbors(start)
+        direct_switch=nnn[0]
+        dst_port=topo.node_to_node_port_num(direct_switch,start)
+        switch_api[direct_switch].table_add('direct_connect', 'ipv4_forward', [ip_start], action_params=[dst_mac,hex(dst_port)])
 
         while queue:
             print(queue)

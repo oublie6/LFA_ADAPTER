@@ -37,12 +37,23 @@ import time
 
 
 def sendloop(t):
+
+    # 获取本地网卡
+
+    interfaces = get_if_list()
+
+    selected_iface = None
+    for iface in interfaces:
+        if "lo" not in iface:
+            selected_iface = iface
+            break
+   
     # 选择第一个非回环网卡接口发送数据包
     if selected_iface:
         print(f"Selected interface: {selected_iface}")
         theversion=100
         while True:
-            send_prob(selected_iface, targetID=1, version=theversion)
+            send_prob(selected_iface, targetID=3, version=theversion)
             theversion+=1
             time.sleep(t)
     else:

@@ -1,60 +1,26 @@
-from p4utils.mininetlib.network_API import NetworkAPI
+import logging
 
-from p4.topologyzoo.util import *
+from p4utils.mininetlib.network_API import NetworkAPI
+from .topologyzoo.util import *
 
 templateDir='p4/template/'
 graphDir='p4/topologyzoo/topo/'
 
-# def Main():
 
-#         net = NetworkAPI()
-
-#         # Network general options
-#         net.setLogLevel('info')
-#         net.enableCli()
-
-#         # Network definition
-#         net.addP4Switch('s1', cli_input=templateDir+'s1-commands.txt')
-#         net.addP4Switch('s2', cli_input=templateDir+'s2-commands.txt')
-#         net.addP4Switch('s3', cli_input=templateDir+'s3-commands.txt')
-
-#         import os
-#         print("当前工作目录：", os.getcwd())
-
-#         net.setP4SourceAll(templateDir+'switch.p4')
-
-#         net.addHost('h1')
-#         net.addHost('h2')
-#         net.addHost('h3')
-#         net.addHost('h4')
-
-#         net.addLink('h1','s1')
-#         net.addLink('h2','s2')
-#         net.addLink('s1','s2')
-#         net.addLink('s1','s3')
-#         net.addLink('h3','s3')
-#         net.addLink('h4','s3')
-
-#         # Assignment strategy
-#         net.l3()
-
-#         # Nodes general options
-#         net.enablePcapDumpAll()
-#         net.enableLogAll()
-
-#         # Start network
-#         net.startNetwork()
-
-import logging
 
 logging.basicConfig(filename='app.log', level=logging.INFO, format='%(asctime)s - %(message)s')
 
 import time
 from pprint import pprint
 
-iperfServerStr=r"bash -c 'iperf3 -s > iperfserver/"
-iperfClientStr1=r"bash -c 'iperf3 -c  "
-iperfClientStr2=r" -u -b 1M -t 60s -i 1 > iperfclient/"
+iperfServerStr=r"bash -c 'iperf3 -s  -p 5201 &> iperfserver/"
+iperfServerStrAtt=r"bash -c 'iperf3 -s -p 5202  &> iperfserver/"
+iperfClientStr1=r"bash -c 'iperf3 -p 5201 -c  "
+iperfClientStr2=r" -u -b "
+iperfClientStr3=" -t   86400   -i 1 &> iperfclient/"
+iperfClientStr4=" -t   30   -i 1 &> iperfclient/"
+
+sendprobStr=r"bash -c 'python p4/util/sendpacket/loopsend.py &> sendprob/"
 
 timeStart=time.perf_counter()
 def GetNetworkBuildTime(graph):
@@ -64,7 +30,7 @@ def GetNetworkBuildTime(graph):
         # with open("app.log","a+") as f:
         #         f.write(graph+"构建时间为:"+str(buildTime)+"ms")
 
-def BuildNet(graph):
+def BuildNet(graph,bw):
 
         G=ParseGraph(graph)
 
@@ -105,13 +71,11 @@ def BuildNet(graph):
                         mygraph[toname].add(fromname)
                         print(fromname,toname)
                         net.addLink(fromname,toname)
+                        net.setBw(fromname,toname,bw)
                 else:
                         print(fromname,toname,'出现重复链路')
                 # for key, value in attrs.items():
                 # print(f"    {key}: {value}")
-        
-        # 设置链路带宽，单位为Mbps
-        net.setBwAll(50)
 
         
         # 显示node之间的链路数
@@ -121,16 +85,39 @@ def BuildNet(graph):
                         if net.areNeighbors(node1, node2):
                                 print(node1,node2,len(net._linkEntry(node1, node2)[0]))
 
-
         # net.addTask("s1",GetNetworkBuildTime,args={graph})
         hnow=0
-        for h in net.hosts():
+        hostsss=net.hosts()
+        t=len(hostsss)/4
+        for h in hostsss:
                 hnow+=1
                 ipp="10."+str(hnow+1)+"."+str(hnow)+".2"
                 net.addTask(name=h,exe=iperfServerStr+h+r"'",start=1)
-                net.addTask(name=h,exe=iperfClientStr1+ipp+iperfClientStr2+h+r"'",start=10)
+                net.addTask(name=h,exe=iperfClientStr1+ipp+iperfClientStr2+" 100K "+iperfClientStr3+"normal/"+h+r"'",start=10)
+                net.addTask(name=h,exe=iperfServerStrAtt+h+r"_att'",start=1)
+                net.addTask(name=h,exe=iperfClientStr1+ipp + " -p 5202 "+iperfClientStr2+" 500K "+iperfClientStr4+"attack/"+h+r"_att'",start=30)
+                net.addTask(name=h,exe=iperfClientStr1+ipp + " -p 5202 "+iperfClientStr2+" 500K "+iperfClientStr4+"attack/"+h+r"_att2'",start=90)
                 # exit(0)
+        
+        # t=hnow/4
+        # n=0
+        # tmp=0
+        # for h in net.hosts(sort=False):
+        #         n+=1
+        #         tmp=h[1:]
+        #         tmp=int(tmp)
+        #         ipp="10."+str(tmp+1)+"."+str(tmp)+".2"
+        #         net.addTask(name=h,exe=iperfServerStrAtt+h+r"_att'",start=1)
+        #         net.addTask(name=h,exe=iperfClientStr1+ipp + " -p 5202 "+iperfClientStr2+" 30M "+iperfClientStr4+"/attack/"+h+r"_att'",start=100)
+                
+        #         if n>=t:
+        #                 break
+        #         # exit(0)
 
+        net.addTask(name="h13",exe=sendprobStr+"h13'",start=10)
+        net.addTask(name="s1",exe=r'sudo  bash -c "python route.py &> route.log" &',start=1)
+        net.addTask(name="s1",exe=r'sudo  bash -c "python add_server.py --targetIP 10.14.13.2/24 --targetID 3 &> add_server.log" &',start=2)
+        net.addTask(name="s1",exe=r'sudo  bash -c "python start_rerouting.py --targetID 3 &> start_rerouting.log" &',start=50)
 
         # Assignment strategy
         net.l3()

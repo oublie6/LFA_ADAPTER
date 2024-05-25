@@ -10,10 +10,10 @@ from util import ParseGraph, PrintGraphAttributes
 # print("nolongitude", nolongitude)
 # print("nolaitude", nolaitude)
 
-G=ParseGraph("topo/Agis.graphml")
-G=ParseGraph("topo/Ans.graphml")
-G=ParseGraph("topo/Atmnet.graphml")
+# G=ParseGraph("topo/Agis.graphml")
+# G=ParseGraph("topo/Ans.graphml")
+# G=ParseGraph("topo/Atmnet.graphml")
 G=ParseGraph("topo/AttMpls.graphml")
 
 # print(G.nodes)
-# PrintGraphAttributes(G)
+PrintGraphAttributes(G)

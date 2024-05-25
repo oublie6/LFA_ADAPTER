@@ -1,2 +1,2 @@
 sudo mn -c
-sudo rm -r log pcap *.log iperfclient/* iperfserver/* result
+sudo rm -r log pcap *.log iperfclient/attack/* iperfclient/normal/* iperfserver/* result sendprob/*

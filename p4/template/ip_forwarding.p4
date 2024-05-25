@@ -17,20 +17,20 @@ const bit<9>  LOOP_THRESHOLD = 3;
 const bit<48> FLOWLET_TIMEOUT = 200000;
 const bit<48> LINK_TIMEOUT = 800000;
 //#define TAU_EXPONENT 9 // twice the probe frequency. if probe freq = 256 microsec, the TAU should be 512 microsec, and the TAU_EXPONENT would be 9
-#define TAU_EXPONENT 19 // twice the probe frequency. if probe freq = 256 millisec, the TAU should be 512 millisec, and the TAU_EXPONENT would be 19
-const bit<32> UTIL_RESET_TIME_THRESHOLD = 512000000;
+#define TAU_EXPONENT 20  // twice the probe frequency. if probe freq = 256 millisec, the TAU should be 512 millisec, and the TAU_EXPONENT would be 19
+const bit<32> UTIL_RESET_TIME_THRESHOLD = 1024000;
 
 register<bit<32>>(2048) min_path_util; //Min path util on a port
 register<bit<9>>(2048) best_nhop;     //Best next hop
 register<bit<32>>(2048) version;     //Link util on a port.
 register<bit<32>>(2048) lfa_on;     //lfa重路由模式状态
 
-register<bit<32>>(5) attack_source_mode;     // 攻击源检测模式状态
+register<bit<32>>(128) attack_source_mode;     // 攻击源检测模式状态
 register<bit<1>>(2048) bloom_filter; // 布隆过滤器
 
 // Metric util
-register<bit<32>>(5) local_util;     // Local util per port.
-register<bit<48>>(5) last_packet_time;
+register<bit<32>>(32) local_util;     // Local util per port.
+register<bit<48>>(32) last_packet_time;
 
 header hulapp_t {
     bit<32>  targetID;    
@@ -297,6 +297,19 @@ control MyIngress(inout headers hdr,
         best_nhop.write(the_targetID,the_best_nhop);
     }
 
+    table direct_connect {
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            ipv4_forward;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction();
+    }
+
     apply {
         //only if IPV4 the rule is applied. Therefore other packets will not be forwarded.
         if (hdr.ipv4.isValid()){
@@ -342,7 +355,10 @@ control MyIngress(inout headers hdr,
                     }
                 }
             }
-            else {
+            else { 
+                if (direct_connect.apply().hit){
+                    return;
+                }
                 if (lfa_server.apply().hit){
                     bit<32> the_lfa_on;
                     lfa_on.read(the_lfa_on,packet_targetID);
@@ -372,20 +388,6 @@ control MyIngress(inout headers hdr,
                     }
                 }
             }
-            if (standard_metadata.egress_spec != 1) {
-                bit<32> tmp_util = 0;
-                bit<48> tmp_time = 0;
-                bit<32> time_diff = 0;
-                local_util.read(tmp_util, (bit<32>) standard_metadata.egress_spec);
-                last_packet_time.read(tmp_time, (bit<32>) standard_metadata.egress_spec);
-                time_diff = (bit<32>)(standard_metadata.ingress_global_timestamp - tmp_time);
-                bit<32> temp = tmp_util*time_diff;
-                tmp_util = time_diff > UTIL_RESET_TIME_THRESHOLD ?
-                            0 : standard_metadata.packet_length + tmp_util - (temp >> TAU_EXPONENT);
-                last_packet_time.write((bit<32>) standard_metadata.egress_spec,
-                                        standard_metadata.ingress_global_timestamp);
-                local_util.write((bit<32>) standard_metadata.egress_spec, tmp_util);
-            }
         }
 
 
@@ -400,7 +402,20 @@ control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
     apply { 
-        
+        if (standard_metadata.egress_port != 1) {
+            bit<32> tmp_util = 0;
+            bit<48> tmp_time = 0;
+            bit<32> time_diff = 0;
+            local_util.read(tmp_util, (bit<32>) standard_metadata.egress_port);
+            last_packet_time.read(tmp_time, (bit<32>) standard_metadata.egress_port);
+            time_diff = (bit<32>)(standard_metadata.ingress_global_timestamp - tmp_time);
+            bit<32> temp = tmp_util*time_diff;
+            tmp_util = time_diff > UTIL_RESET_TIME_THRESHOLD ?
+                        0 : standard_metadata.packet_length + tmp_util - (temp >> TAU_EXPONENT);
+            last_packet_time.write((bit<32>) standard_metadata.egress_port,
+                                    standard_metadata.ingress_global_timestamp);
+            local_util.write((bit<32>) standard_metadata.egress_port, tmp_util);
+        }
      }
 }
 

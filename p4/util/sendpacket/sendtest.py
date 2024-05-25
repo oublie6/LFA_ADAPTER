@@ -1,8 +1,7 @@
 import threading
 
+from prob import Prob
 from scapy.all import IP, TCP, Ether, sendp
-
-from util.sendpacket.prob import Prob
 
 
 # 定义一个函数用于从特定的网络接口发送数据包

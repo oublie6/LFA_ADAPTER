@@ -12,4 +12,4 @@ parser.add_argument('--topo', type=str, help='topo名')
 args = parser.parse_args()
 
 
-BuildNet(graphDir+args.topo)
+BuildNet(graphDir+args.topo,0.5)
