@@ -1,5 +1,6 @@
 import math
 from test import sprint
+import test
 
 import pandas as pd
 import torch
@@ -113,117 +114,130 @@ N_LAYERS = 1
 SEQ_LEN = 16
 OUTPUT_DIM = 2
 
-# 加载数据集
-attack_csv = './data/attack.csv'
-data = pd.read_csv(attack_csv, header=None)
 
-x_train_attack = []
-i = 0
-while i < len(data):
-    shixu = []
-    for j in range(16):
-        shujudian = []
-        tmp = i + j * 6
-        for k in range(4):
-            shujudian += list(filter(lambda x: not math.isnan(x), data.iloc[k + tmp].tolist()))
-        shujudian += list(filter(lambda x: not math.isnan(x), data.iloc[tmp + 5].tolist()))
-        shixu.append(shujudian)
-    x_train_attack.append(shixu)
-    i += 97
+def tranAndEvalueate(attack_src,normal_src):
+    # 加载数据集
+    attack_csv = './data/attack1.0.csv'
+    data = pd.read_csv(attack_csv, header=None)
 
-y_train_attack = [[1, 0] for _ in x_train_attack]  # 使用 one-hot 编码
+    x_train_attack = []
+    i = 0
+    while i < len(data):
+        shixu = []
+        for j in range(16):
+            shujudian = []
+            tmp = i + j * 6
+            for k in range(4):
+                shujudian += list(filter(lambda x: not math.isnan(x), data.iloc[k + tmp].tolist()))
+            shujudian += list(filter(lambda x: not math.isnan(x), data.iloc[tmp + 5].tolist()))
+            shixu.append(shujudian)
+        x_train_attack.append(shixu)
+        i += 97
 
-normal_csv = './data/normal.csv'
-data = pd.read_csv(normal_csv, header=None)
+    y_train_attack = [[1, 0] for _ in x_train_attack]  # 使用 one-hot 编码
 
-x_train_normal = []
-i = 0
-while i < len(data):
-    shixu = []
-    for j in range(16):
-        shujudian = []
-        tmp = i + j * 6
-        for k in range(4):
-            shujudian += list(filter(lambda x: not math.isnan(x), data.iloc[k + tmp].tolist()))
-        shujudian += list(filter(lambda x: not math.isnan(x), data.iloc[tmp + 5].tolist()))
-        shixu.append(shujudian)
-    x_train_normal.append(shixu)
-    i += 97
+    normal_csv = './data/normal1.0.csv'
+    data = pd.read_csv(normal_csv, header=None)
 
-y_train_normal = [[0, 1] for _ in x_train_normal]  # 使用 one-hot 编码
+    x_train_normal = []
+    i = 0
+    while i < len(data):
+        shixu = []
+        for j in range(16):
+            shujudian = []
+            tmp = i + j * 6
+            for k in range(4):
+                shujudian += list(filter(lambda x: not math.isnan(x), data.iloc[k + tmp].tolist()))
+            shujudian += list(filter(lambda x: not math.isnan(x), data.iloc[tmp + 5].tolist()))
+            shixu.append(shujudian)
+        x_train_normal.append(shixu)
+        i += 97
 
-x_train = torch.tensor(x_train_attack + x_train_normal, dtype=torch.float32)
-y_train = torch.tensor(y_train_attack + y_train_normal, dtype=torch.float32)
+    y_train_normal = [[0, 1] for _ in x_train_normal]  # 使用 one-hot 编码
 
-# 划分训练集和测试集
-dataset = torch.utils.data.TensorDataset(x_train, y_train)
-train_size = int(0.7 * len(dataset))
-test_size = len(dataset) - train_size
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+    x_train = torch.tensor(x_train_attack + x_train_normal, dtype=torch.float32)
+    y_train = torch.tensor(y_train_attack + y_train_normal, dtype=torch.float32)
 
-train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
-test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=32, shuffle=False)
+    # 划分训练集和测试集
+    dataset = torch.utils.data.TensorDataset(x_train, y_train)
+    train_size = int(0.7 * len(dataset))
+    test_size = len(dataset) - train_size
+    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-# 初始化模型、损失函数和优化器
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = Seq2Seq(INPUT_DIM, HID_DIM, N_LAYERS, SEQ_LEN, OUTPUT_DIM).to(device)
-criterion = nn.BCELoss()  # 使用二分类交叉熵损失函数
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=32, shuffle=False)
 
-# 训练模型
-num_epochs = 50
-for epoch in range(num_epochs):
-    model.train()
-    for inputs, targets in train_loader:
-        inputs, targets = inputs.to(device), targets.to(device)
+    # 初始化模型、损失函数和优化器
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = Seq2Seq(INPUT_DIM, HID_DIM, N_LAYERS, SEQ_LEN, OUTPUT_DIM).to(device)
+    criterion = nn.BCELoss()  # 使用二分类交叉熵损失函数
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-        # 前向传播
-        outputs = model(inputs)
-        loss = criterion(outputs, targets)
+    # 训练模型
+    num_epochs = 10
+    for epoch in range(num_epochs):
+        model.train()
+        for inputs, targets in train_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
 
-        # 反向传播和优化
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            # 前向传播
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
 
-    sprint(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+            # 反向传播和优化
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-# 保存模型
-torch.save(model.state_dict(), 'seq2seq_model.pth')
-print("Model saved as seq2seq_model.pth")
+        sprint(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
 
-# 预测
-model.eval()
-all_targets = []
-all_predicted = []
-with torch.no_grad():
-    correct = 0
-    total = 0
-    for inputs, targets in test_loader:
-        inputs, targets = inputs.to(device), targets.to(device)
-        outputs = model(inputs)
-        predicted = (outputs > 0.5).float()  # 将输出转换为二进制标签
-        total += targets.size(0)
-        correct += (predicted == targets).sum().item() / 2  # 每个样本有两个标签，所以除以2
-        all_targets.extend(targets.cpu().numpy())
-        all_predicted.extend(predicted.cpu().numpy())
+    # 保存模型
+    torch.save(model.state_dict(), 'seq2seq_model.pth')
+    # print("Model saved as seq2seq_model.pth")
 
-    print(f'Accuracy of the model on the test set: {100 * correct / total:.2f}%')
+    # 预测
+    model.eval()
+    all_targets = []
+    all_predicted = []
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for inputs, targets in test_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            outputs = model(inputs)
+            predicted = (outputs > 0.5).float()  # 将输出转换为二进制标签
+            total += targets.size(0)
+            correct += (predicted == targets).sum().item() / 2  # 每个样本有两个标签，所以除以2
+            all_targets.extend(targets.cpu().numpy())
+            all_predicted.extend(predicted.cpu().numpy())
 
-# 计算混淆矩阵
-all_targets = torch.tensor(all_targets)
-all_predicted = torch.tensor(all_predicted)
-cm = confusion_matrix(all_targets.argmax(axis=1), all_predicted.argmax(axis=1))
-precision = precision_score(all_targets.argmax(axis=1), all_predicted.argmax(axis=1), average='binary')
-recall = recall_score(all_targets.argmax(axis=1), all_predicted.argmax(axis=1), average='binary')
+        # print(f'Accuracy of the model on the test set: {100 * correct / total:.2f}%')
 
-# 计算漏报率（FNR）和误报率（FPR）
-fnr = cm[1, 0] / (cm[1, 0] + cm[1, 1])
-fpr = cm[0, 1] / (cm[0, 0] + cm[0, 1])
+    # 计算混淆矩阵
+    all_targets = torch.tensor(all_targets)
+    all_predicted = torch.tensor(all_predicted)
+    cm = confusion_matrix(all_targets.argmax(axis=1), all_predicted.argmax(axis=1))
+    precision = precision_score(all_targets.argmax(axis=1), all_predicted.argmax(axis=1), average='binary')
+    recall = recall_score(all_targets.argmax(axis=1), all_predicted.argmax(axis=1), average='binary')
 
-print('Confusion Matrix:')
-print(cm)
-print(f'Precision: {precision:.4f}')
-print(f'Recall: {recall:.4f}')
-print(f'False Negative Rate (FNR): {fnr:.4f}')
-print(f'False Positive Rate (FPR): {fpr:.4f}')
+    # 计算漏报率（FNR）和误报率（FPR）
+    fnr = cm[1, 0] / (cm[1, 0] + cm[1, 1])
+    fpr = cm[0, 1] / (cm[0, 0] + cm[0, 1])
+
+    print('Confusion Matrix:')
+    print(cm)
+    # print(f'Precision: {precision:.4f}')
+    # print(f'Recall: {recall:.4f}')
+    # print(f'False Negative Rate (FNR): {fnr:.4f}')
+    # print(f'False Positive Rate (FPR): {fpr:.4f}')
+    return [precision,recall,fnr,fnr]
+
+
+att_data=["attack0.2","attack0.4","attack0.6","attack0.8","attack1.0","attack1.2","attack1.4","attack1.6","attack1.8","attack2.0"]
+nor_data=["normal0.2","normal0.4","normal0.6","normal0.8","normal1.0","normal1.2","normal1.4","normal1.6","normal1.8","normal2.0"]
+
+ans=[]
+
+for i in range(len(att_data)):
+    ans.append(tranAndEvalueate(att_data[i]+".csv",nor_data[i]+".csv"))
+

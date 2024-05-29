@@ -5,6 +5,22 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from mpl_toolkits.basemap import Basemap as Basemap
 
+my_thread=1
+
+flow_dense={}
+target_link=[]
+
+def ComputeDense(G,targetServer):
+    for n in G.nodes():
+        l=nx.get_dijstra(G,n,targetServer)
+        flow_dense[l]+=1
+    flow_dense.sort()
+    m=1
+    for k in flow_dense.keys():
+        if m>5:
+            break
+        target_link.append(k)
+    return target_link
 
 # 解析topo图
 def ParseGraph(filepath):

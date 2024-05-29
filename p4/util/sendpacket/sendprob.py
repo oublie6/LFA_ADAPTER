@@ -36,7 +36,7 @@ def sendone():
 import time
 
 
-def sendloop(t):
+def sendloop(t,targetID):
 
     # 获取本地网卡
 
@@ -53,7 +53,7 @@ def sendloop(t):
         print(f"Selected interface: {selected_iface}")
         theversion=100
         while True:
-            send_prob(selected_iface, targetID=3, version=theversion)
+            send_prob(selected_iface, targetID=targetID, version=theversion)
             theversion+=1
             time.sleep(t)
     else:

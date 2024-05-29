@@ -73,3 +73,23 @@ def main():
 def sprint(s):
     # time.sleep(5)
     print(s)
+
+import os
+import shutil
+
+
+def copy_files(src_folder, dst_folder):
+    # 检查目标文件夹是否存在，如果不存在则创建
+    if not os.path.exists(dst_folder):
+        os.makedirs(dst_folder)
+    
+    # 遍历源文件夹中的所有文件
+    for item in os.listdir(src_folder):
+        src_path = os.path.join(src_folder, item)
+        dst_path = os.path.join(dst_folder, item)
+        
+        # 检查是否是文件
+        if os.path.isfile(src_path):
+            shutil.copy2(src_path, dst_path)  # 使用 copy2 保留文件的元数据
+
+copy_files("../../shixubuchang","./result")

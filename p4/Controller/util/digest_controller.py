@@ -50,6 +50,7 @@ class DigestController():
                 # print("Source IP:", str(ipaddress.IPv4Address(src)))
                 # print("Destination IP:", str(ipaddress.IPv4Address(dst)))
                 print("可疑Source IP:", str(ipaddress.IPv4Address(src)))
+                ipaddress.IPv4Address(src).upload()
 
         self.controller.client.bm_learning_ack_buffer(ctx_id, list_id, buffer_id)
 
@@ -69,7 +70,7 @@ def run_digest_controller(sw_name):
     controller.run_digest_loop()
 
 def main():
-    switch_names = ["s1", "s2", "s3"]  # Add all switch names here
+    switch_names = load_topo('topology.json').get_switches()
     threads = []
 
     for switch_name in switch_names:
